@@ -155,6 +155,3 @@ CORS_ALLOW_HEADERS = (
     'x-csrftoken',
     'x-requested-with',
 )
-
-#modeling시 나타나는 system Error 무시
-SILENCED_SYSTEM_CHECKS = ['models.E006']
