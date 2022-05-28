@@ -6,6 +6,7 @@ my_settings.py
 db_uploader.py
 csv
 query_debugger.py
+mg.py
 
 ### Linux ###
 *~

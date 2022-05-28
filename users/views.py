@@ -6,12 +6,11 @@ from django.http             import JsonResponse
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY
+from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 from users.models      import User, SocialPlatform, Group, ProfileImage
 from movies.models     import Image
 from users.serializers import KakaoLoginSerializer
 from core.utils        import login_decorator
-
 
 #* 카카오 신규유저 테스트
 class KakaoLogIn(APIView):
@@ -118,3 +117,81 @@ class DeleteAccountView(APIView):
         user.delete()
         
         return Response({'message': 'DELETE_SUCCESS'}, status=204)
+
+#NaverLogin
+# TODO : DRF 적용
+class LoginNaverView(View):
+    def get(self, request):
+        try:
+            naver_access_token  = request.GET.get('access_token')
+            naver_refresh_token = request.GET.get('refresh_token')
+            headers             = {'Authorization' : 'Bearer '+ naver_access_token}
+            profile_api_url     = "https://openapi.naver.com/v1/nid/me"
+            
+            user_info_dict      = requests.get(profile_api_url, headers=headers, timeout=5).json()
+            user_info           = user_info_dict['response']
+
+            if(user_info_dict['message']!= 'success'):
+                return JsonResponse({'message' : user_info_dict['message'], 'ressultcode': user_info_dict['resultcode']}, status=400)
+            
+            if(User.objects.filter(social_id=user_info['id']).exists()):
+                user = User.objects.get(social_id=user_info['id'])
+                user.refresh_token = naver_refresh_token
+                user.save()
+                
+            else:
+                print(3)
+                user = User.objects.create(
+                    social_id       = user_info['id'],
+                    nickname        = user_info['name'],
+                    email           = user_info['email'],
+                    group           = Group.objects.get(name='general'),
+                    refresh_token   = naver_refresh_token,
+                    social_platform = SocialPlatform.objects.get(name='naver')
+
+                )
+                # TODO : S3업로더 생성 후 S3업로드하고, image_url 반영
+                user_image = Image.objects.create(image_url=user_info['profile_image'])
+                ProfileImage.objects.create(user=user, image=user_image)
+                
+            payload = {
+                'id':user.id, 
+                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)
+            }
+            
+            access_token = jwt.encode(payload, SECRET_KEY, ALGORITHM)
+            print(access_token)
+            print(type(access_token))
+            return JsonResponse({
+                'message':'SUCCESS',
+                'access_token':access_token
+                }, status=200)        
+
+        except KeyError:
+            return JsonResponse({'message':'KEY_ERROR'}, status=400)
+        
+        except ValueError:
+            return JsonResponse({'message':'VALUE_ERROR'}, status=400)         
+
+class LoginNaverCallBackView(View):
+    def get(self, request):
+        token_api_uri = 'https://nid.naver.com/oauth2.0/token'
+        data = {
+            'grant_type'    :'authorization_code',
+            'client_id'     : NAVER_CLIENT_ID,
+            'client_secret' : NAVER_CLIENT_SECRET,
+            'code'          : request.GET.get('code'),
+            # TODO : state세션에 저장 후, 로그인 요청시 검증할 수 있도록 할 것
+            'state'         : 'state',
+        }
+        
+        token_response = requests.post(token_api_uri, data=data)
+        token_info     = token_response.json()
+        
+        access_token  = token_info['access_token']
+        refresh_token = token_info['refresh_token']
+        token_type    = token_info['token_type']
+        expires_in    = token_info['expires_in']
+        
+        return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+>>>>>>> 14790ba (Add : naver login without delete function, s3 uploader, DRF)
