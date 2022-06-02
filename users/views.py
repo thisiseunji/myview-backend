@@ -142,37 +142,46 @@ class LoginNaverView(View):
             if(user_info_dict['message']!= 'success'):
                 return JsonResponse({'message' : user_info_dict['message'], 'ressultcode': user_info_dict['resultcode']}, status=400)
             
-            if(User.objects.filter(social_id=user_info['id']).exists()):
+            user = User.objects.filter(social_id=user_info['id'])
+            
+            if(user.exists()):
                 user = User.objects.get(social_id=user_info['id'])
-                user.refresh_token = naver_refresh_token
-                user.save()
+                #user.refresh_token = naver_refresh_token
+                #user.save()
                 
             else:
-                print(3)
                 user = User.objects.create(
                     social_id       = user_info['id'],
                     nickname        = user_info['name'],
                     email           = user_info['email'],
                     group           = Group.objects.get(name='general'),
-                    refresh_token   = naver_refresh_token,
+                    #refresh_token   = naver_refresh_token,
                     social_platform = SocialPlatform.objects.get(name='naver')
-
                 )
-                # TODO : S3업로더 생성 후 S3업로드하고, image_url 반영
-                user_image = Image.objects.create(image_url=user_info['profile_image'])
-                ProfileImage.objects.create(user=user, image=user_image)
                 
-            payload = {
-                'id':user.id, 
-                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)
+                # TODO : S3업로더 생성 후 S3업로드하고, image_url 반영
+                default_image_url = 'https://cdn.pixabay.com/photo/2018/11/13/21/43/avatar-3814049_1280.png'
+            
+                user_image = Image.objects.create(image_url=user_info['profile_image', default_image_url])
+                ProfileImage.objects.create(user=user, image=user_image)
+            
+            access_token = jwt.encode({'id':user.id, 
+                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
+            
+            refresh_token = jwt.encode({'id':user.id, 
+                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
+            
+            user.refresh_token = refresh_token
+            user.save()
+            
+            token_info = {
+                'access_token':access_token,
+                'refresh_token':refresh_token 
             }
             
-            access_token = jwt.encode(payload, SECRET_KEY, ALGORITHM)
-            print(access_token)
-            print(type(access_token))
             return JsonResponse({
                 'message':'SUCCESS',
-                'access_token':access_token
+                'token_info': token_info
                 }, status=200)        
 
         except KeyError:
@@ -202,3 +211,23 @@ class LoginNaverCallBackView(View):
         expires_in    = token_info['expires_in']
         
         return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+
+      
+class UserInformationView(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            user          = request.user
+            profile_image = ProfileImage.objects.get(user_id=user.id).image.image_url
+            result = {
+                'nickname'      : user.nickname,
+                'email'         : user.email,
+                'Profile_image' : profile_image
+            }
+            return JsonResponse({'message': 'SUCCESS', 'result' : result}, status=200)
+    
+        except KeyError:
+            return JsonResponse({'message': 'KEYERROR'}, status=400)
+
+        except ValueError:
+            return JsonResponse({'message':'VALUE_ERROR'}, status=400)
