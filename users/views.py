@@ -160,7 +160,9 @@ class LoginNaverView(View):
                 )
                 
                 # TODO : S3업로더 생성 후 S3업로드하고, image_url 반영
-                user_image = Image.objects.create(image_url=user_info['profile_image'])
+                default_image_url = 'https://cdn.pixabay.com/photo/2018/11/13/21/43/avatar-3814049_1280.png'
+            
+                user_image = Image.objects.create(image_url=user_info['profile_image', default_image_url])
                 ProfileImage.objects.create(user=user, image=user_image)
             
             access_token = jwt.encode({'id':user.id, 
@@ -209,3 +211,22 @@ class LoginNaverCallBackView(View):
         expires_in    = token_info['expires_in']
         
         return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+
+class UserInformationView(View):
+    @login_decorator
+    def get(self, request):
+        try:
+            user          = request.user
+            profile_image = ProfileImage.objects.get(user_id=user.id).image.image_url
+            result = {
+                'nickname'      : user.nickname,
+                'email'         : user.email,
+                'Profile_image' : profile_image
+            }
+            return JsonResponse({'message': 'SUCCESS', 'result' : result}, status=200)
+    
+        except KeyError:
+            return JsonResponse({'message': 'KEYERROR'}, status=400)
+
+        except ValueError:
+            return JsonResponse({'message':'VALUE_ERROR'}, status=400)
