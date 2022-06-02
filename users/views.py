@@ -202,4 +202,3 @@ class LoginNaverCallBackView(View):
         expires_in    = token_info['expires_in']
         
         return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
->>>>>>> 14790ba (Add : naver login without delete function, s3 uploader, DRF)
