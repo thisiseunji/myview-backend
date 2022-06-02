@@ -9,7 +9,6 @@ urlpatterns = [
     # path('naver/login/callback', NaverLoginCallbackView.as_view()),
     # path('login/kakao', KakaoLogInView.as_view()),
     path('login/kakao/token', KakaoLogIn.as_view()), #! 테스트용
-    
     path('delete-account', DeleteAccountView.as_view()),
     path('login/kakao/callback', KakaoLogInCallbackView.as_view()),
 ]
