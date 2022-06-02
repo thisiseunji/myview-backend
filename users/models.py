@@ -23,9 +23,20 @@ class User(TimeStampedModel):
     group           = models.ForeignKey('Group', on_delete=models.CASCADE)
     refresh_token   = models.CharField(max_length=300, null=True)
     social_platform = models.ForeignKey('SocialPlatform', on_delete=models.CASCADE)
+    is_valid        = models.BooleanField(default=True)
     
     class Meta:
         db_table = 'users'
+
+
+class SocialToken(TimeStampedModel):
+    access_token  = models.CharField(max_length=300, null=True)
+    refresh_token = models.CharField(max_length=300, null=True)
+    token_type    = models.CharField(max_length=300, null=True)
+    expires_in    = models.CharField(max_length=300, null=True)
+    
+    class Meta:
+        db_table = 'social_tokens'
         
 class ProfileImage(TimeStampedModel):
     user  = models.ForeignKey('User', on_delete=models.CASCADE)
