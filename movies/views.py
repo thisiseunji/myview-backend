@@ -1,4 +1,5 @@
 from django.http            import JsonResponse
+from django.views import View
 from rest_framework.views   import APIView
 
 from movies.models          import Movie, MovieImage, ThumbnailImage, MovieActor, MovieGenre
@@ -25,4 +26,15 @@ class MovieDetailView(APIView):
                     'movie_image'     : [image.image.image_url for image in MovieImage.objects.filter(movie_id=movie_id)]
                     }
             
-            return JsonResponse({'data':data})
+            return JsonResponse({'data':data})    
+
+class MovieTitleView(View):
+    def get(self, request):
+        data = []
+        movies = Movie.objects.all()
+        for i in movies:
+            data.append({
+                'id'    : i.id,
+                'title' : i.title
+            })
+        return JsonResponse({'message' : 'SUCCESS', 'data': data}, status=200)
