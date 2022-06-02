@@ -46,10 +46,11 @@ class KakaoLogInCallbackView(APIView):
         headers        = {'Authorization': f'Bearer {access_token}'}
         kakao_response = requests.get(kakao_url, headers = headers, timeout = 5).json()
         
-        social_id = kakao_response['id']
-        nickname  = kakao_response['kakao_account']['profile']['nickname']
-        email     = kakao_response['kakao_account']['email']
-        
+        social_id      = kakao_response['id']
+        nickname       = kakao_response['kakao_account']['profile']['nickname']
+        profile_image  = kakao_response['kakao_account']['profile']['profile_image_url']
+        email          = kakao_response['kakao_account']['email']
+    
         #* 기존 가입한 유저가 로그인 할 때
         if User.objects.filter(social_id=social_id).exists():
             user_info     = User.objects.get(social_id=social_id)
@@ -66,12 +67,13 @@ class KakaoLogInCallbackView(APIView):
                 }
             
             data = {
-                'social_id': social_id,
-                'nickname': nickname,
-                'email': email,
+                'social_id'     : social_id,
+                'nickname'      : nickname,
+                'email'         : email,
+                'profile_image' : profile_image,
             }
         
-            return Response({'user_info': KakaoLoginSerializer(instance=data).data, 'token_info': token_info}, status=201)
+            return Response({'user_info': data, 'token_info': token_info}, status=201)
         
         else:
             #* 신규 유저가 로그인 할 때 (회원가입)
@@ -83,9 +85,13 @@ class KakaoLogInCallbackView(APIView):
                 group_id           = Group.objects.get(id=2).id,
             )
             
+            image = Image.objects.create(
+                image_url = profile_image
+            )
+            
             ProfileImage.objects.create(
-                user = user,
-                image = Image.objects.get(id=1)
+                user  = user,
+                image = image
             )
             
             access_token  = jwt.encode({'id': social_id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
@@ -97,12 +103,14 @@ class KakaoLogInCallbackView(APIView):
                 }
             
             data = {
-                'social_id': social_id,
-                'nickname': nickname,
-                'email': email,
+                'social_id'     : social_id,
+                'nickname'      : nickname,
+                'email'         : email,
+                'profile_image' : profile_image
             }
             
-            return Response({'user_info': KakaoLoginSerializer(instance=data).data, 'token_info': token_info}, status=201)
+            return Response({'user_info': data, 'token_info': token_info}, status=201)
+
         
         # except User.DoesNotExist:
         #     return JsonResponse({'message': 'INVALID_USER'}, status=404)
