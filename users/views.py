@@ -212,6 +212,7 @@ class LoginNaverCallBackView(View):
         
         return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
 
+      
 class UserInformationView(View):
     @login_decorator
     def get(self, request):
