@@ -10,7 +10,6 @@ class ColorCode(models.Model):
 
 class Tag(models.Model):
     name       = models.CharField(max_length=50)
-    color_code = models.ForeignKey('ColorCode', on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tags'
@@ -23,10 +22,16 @@ class Review(TimeStampedModel):
     watched_time  = models.TimeField(auto_now=False, auto_now_add=False)
     user          = models.ForeignKey('users.User', on_delete=models.CASCADE)
     movie         = models.ForeignKey('movies.Movie', on_delete=models.CASCADE)
-    tag           = models.ForeignKey('Tag', on_delete=models.CASCADE)
     
     class Meta:
         db_table = 'reviews'
+        
+class ReviewTag(models.Model):
+    Review = models.ForeignKey('reviews.Review', on_delete=models.CASCADE)
+    Tag    = models.ForeignKey('reviews.Tag', on_delete=models.CASCADE)
+    
+    class Meta:
+        db_table = 'reviewtags'
 
 class Place(models.Model):
     name = models.CharField(max_length=50)
