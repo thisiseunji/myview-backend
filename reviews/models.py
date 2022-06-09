@@ -31,7 +31,7 @@ class ReviewTag(models.Model):
     tag    = models.ForeignKey('reviews.Tag', on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'reviewtags'
+        db_table = 'review_tags'
 
 class Place(models.Model):
     name = models.CharField(max_length=50)
