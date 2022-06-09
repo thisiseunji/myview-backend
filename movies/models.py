@@ -104,4 +104,4 @@ class ThumbnailImage(models.Model):
     image = models.ForeignKey('Image', on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'Thumbnail_images'
+        db_table = 'thumbnail_images'
