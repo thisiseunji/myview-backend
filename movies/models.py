@@ -2,9 +2,6 @@ from django.db import models
 
 from core.models import TimeStampedModel
 
-
-
-
 class Country(models.Model):
     name = models.CharField(max_length=50)
     
@@ -32,6 +29,7 @@ class Movie(TimeStampedModel):
     
     class Meta:
         db_table = 'movies'
+
 class MoviePlatform(models.Model):
     movie    = models.ForeignKey('Movie', on_delete=models.CASCADE)
     platform = models.ForeignKey('Platform', on_delete=models.CASCADE) 
@@ -106,4 +104,4 @@ class ThumbnailImage(models.Model):
     image = models.ForeignKey('Image', on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'Thumbnail_images'
+        db_table = 'thumbnail_images'

@@ -27,11 +27,11 @@ class Review(TimeStampedModel):
         db_table = 'reviews'
         
 class ReviewTag(models.Model):
-    Review = models.ForeignKey('reviews.Review', on_delete=models.CASCADE)
-    Tag    = models.ForeignKey('reviews.Tag', on_delete=models.CASCADE)
+    review = models.ForeignKey('reviews.Review', on_delete=models.CASCADE)
+    tag    = models.ForeignKey('reviews.Tag', on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'reviewtags'
+        db_table = 'review_tags'
 
 class Place(models.Model):
     name = models.CharField(max_length=50)
@@ -49,12 +49,12 @@ class ReviewPlace(TimeStampedModel):
     class Meta:
         db_table = 'review_places'
 
-class ImageReview(models.Model):
-    image  = models.ForeignKey('movies.Image', on_delete=models.CASCADE)
+class ReviewImage(models.Model):
     review = models.ForeignKey('Review', on_delete=models.CASCADE)    
+    image  = models.ForeignKey('movies.Image', on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'image_reviews'
+        db_table = 'review_images'
         
         
 class ReviewUser(TimeStampedModel):
