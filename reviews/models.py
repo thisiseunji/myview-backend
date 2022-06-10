@@ -16,10 +16,11 @@ class Tag(models.Model):
 
 class Review(TimeStampedModel):
     title         = models.CharField(max_length=100)
-    content       = models.TextField(max_length=1000)
+    content       = models.TextField(max_length=1000, blank=True)
     rating        = models.DecimalField(max_digits=2, decimal_places=1)
-    watched_date  = models.DateField(auto_now=False, auto_now_add=False)
-    watched_time  = models.TimeField(auto_now=False, auto_now_add=False)
+    watched_date  = models.DateField(auto_now=False, auto_now_add=False, blank=True, null=True)
+    watched_time  = models.TimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
+    with_user     = models.CharField(max_length=30, blank=True)
     user          = models.ForeignKey('users.User', on_delete=models.CASCADE)
     movie         = models.ForeignKey('movies.Movie', on_delete=models.CASCADE)
     
@@ -34,10 +35,10 @@ class ReviewTag(models.Model):
         db_table = 'review_tags'
 
 class Place(models.Model):
-    name = models.CharField(max_length=50)
-    mapx = models.FloatField(max_length=100)
-    mapy = models.FloatField(max_length=100)
-    link = models.URLField(max_length=500)
+    name = models.CharField(max_length=50, blank=True)
+    mapx = models.FloatField(max_length=100, blank=True, null=True)
+    mapy = models.FloatField(max_length=100, blank=True, null=True)
+    link = models.URLField(max_length=500, blank=True)
 
     class Meta:
         db_table = 'places'
@@ -55,7 +56,6 @@ class ReviewImage(models.Model):
     
     class Meta:
         db_table = 'review_images'
-        
         
 class ReviewUser(TimeStampedModel):
     review = models.ForeignKey('Review', on_delete=models.CASCADE)    
