@@ -2,10 +2,39 @@ from django.http            import JsonResponse
 from django.views           import View
 from rest_framework.views   import APIView
 
-from movies.models          import Movie, MovieImage, ThumbnailImage, MovieActor, MovieGenre
+from movies.models          import *
+from users.models           import User
 
 
 class MovieDetailView(APIView):
+    def post(self, request):
+        # try:
+            data            = request.data
+            title           = data['title']
+            description     = data['description']
+            release_date    = data['release_date']
+            country         = data['country']
+            category        = data['category']
+            # genre           = data['genre']
+            # actor           = data['actor']
+            # actor_name      = data['actor_name']
+            # actor_role      = data['actor_role']
+            # actor_role_name = data['actor_role_name']
+            # thumbnail_image = data['thumbnail_image']
+            # movie_gallery   = data['movie_gallery']
+            # movie_video     = data['movie_video']
+            
+            movie = Movie.objects.create(
+                title        = title,
+                description  = description,
+                release_date = release_date,
+                country      = country,
+                category     = category,
+            )
+            
+            return JsonResponse({'data': movie}, status=201)
+            
+    
     def get(self, request, movie_id):
         try:
             movie = Movie.objects.get(id=movie_id)
