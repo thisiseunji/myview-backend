@@ -84,8 +84,7 @@ class MovieDataView(APIView):
                 role_name = actor_role_name
             )
             
-            serializer = MovieSerializer(instance=movie)
-            return Response(serializer.data, status=201)
+            return Response({'message': 'CREATE_SUCCESS'}, status=201)
         
     def delete(self, request):
         try:
