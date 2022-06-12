@@ -12,7 +12,7 @@ from users.models           import User
 class MovieDataView(APIView):
     @transaction.atomic(using='default')
     def post(self, request):
-        # try:
+        try:
             data                = request.data
             title               = data['title']
             description         = data['description']
@@ -85,6 +85,9 @@ class MovieDataView(APIView):
             )
             
             return Response({'message': 'CREATE_SUCCESS'}, status=201)
+        
+        except KeyError:
+            return Response({'message': 'KEY_ERROR'}, status=400)
         
     def delete(self, request):
         try:
