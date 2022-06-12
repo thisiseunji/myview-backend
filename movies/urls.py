@@ -21,7 +21,7 @@ urlpatterns = [
     path('actor/list', ActorDataView.as_view()),
     
     # 배우 생성
-    path('actor/creat', ActorDataView.as_view()),
+    path('actor/create', ActorDataView.as_view()),
     
     # 배우 정보 업데이트
     path('actor/update', ActorDataView.as_view()),

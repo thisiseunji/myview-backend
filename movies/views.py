@@ -10,6 +10,7 @@ from users.models           import User
 
 
 class MovieDataView(APIView):
+    @transaction.atomic(using='default')
     def post(self, request):
         # try:
             data                = request.data
@@ -17,14 +18,14 @@ class MovieDataView(APIView):
             description         = data['description']
             release_date        = data['release_date']
             
-            country             = Country.objects.get(id=data['country_id'])
-            category            = Category.objects.get(id=data['category_id'])
-            genre               = Genre.objects.get(id=data['genre_id'])
+            country             = Country.objects.get(name=data['country_name'])
+            category            = Category.objects.get(name=data['category_name'])
+            genre               = Genre.objects.get(name=data['genre_name'])
+            platform            = Platform.objects.get(name=data['platform_name'])
             
-            actor_name          = data['actor_name']
+            actor               = Actor.objects.get(name=data['actor_name'])
             actor_role          = Role.objects.get(name=data['actor_role'])
             actor_role_name     = data['actor_role_name']
-            actor_country       = Country.objects.get(name=data['actor_country_name'])
             
             thumbnail_image_url = data['thumbnail_image_url']
             movie_gallery_url   = data['movie_gallery_url']
@@ -37,6 +38,50 @@ class MovieDataView(APIView):
                 release_date = release_date,
                 country_id   = country.id,
                 category_id  = category.id,
+            )
+            
+            movie_gallery = Image.objects.create(
+                image_url = movie_gallery_url
+            )
+            
+            MovieImage.objects.create(
+                movie = movie,
+                image = movie_gallery
+            )
+            
+            thumbnail_image = Image.objects.create(
+                image_url = thumbnail_image_url
+            )
+            
+            ThumbnailImage.objects.create(
+                movie = movie,
+                image = thumbnail_image
+            )
+            
+            movie_video = Video.objects.create(
+                video_url = movie_video_url
+            )
+            
+            MovieVideo.objects.create(
+                movie = movie,
+                video = movie_video
+            )
+            
+            MovieGenre.objects.create(
+                movie = movie,
+                genre = genre,
+            )
+            
+            MoviePlatform.objects.create(
+                movie = movie,
+                platform = platform
+            )
+            
+            MovieActor.objects.create(
+                movie     = movie,
+                actor     = actor,
+                role      = actor_role,
+                role_name = actor_role_name
             )
             
             serializer = MovieSerializer(instance=movie)
