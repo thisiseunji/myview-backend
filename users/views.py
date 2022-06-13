@@ -3,15 +3,14 @@ import requests, jwt, datetime
 from django.shortcuts        import redirect
 from django.views            import View
 from django.http             import JsonResponse
-from rest_framework.request  import Request
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 from users.models      import User, SocialPlatform, Group, ProfileImage
 from movies.models     import Image
-from users.serializers import KakaoLoginSerializer
 from core.utils        import login_decorator
+from users.serializers import KakaoLoginSerializer
+from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
 #* 카카오 신규유저 테스트
@@ -105,13 +104,13 @@ class KakaoLogInCallbackView(APIView):
                     }
 
                 data = {
-                    'social_id'     : social_id,
-                    'nickname'      : nickname,
-                    'email'         : email,
-                    'profile_image' : profile_image
+                    'id'       : user.id,
+                    'nickname' : nickname,
+                    'email'    : email,
                 }
-
-                return Response({'user_info': data, 'token_info': token_info}, status=201)
+                
+                serializer = KakaoLoginSerializer(instance=data)
+                return Response({'user_info': serializer.json(), 'token_info': token_info}, status=201)
         
         except User.DoesNotExist:
             return JsonResponse({'message': 'INVALID_USER'}, status=400)

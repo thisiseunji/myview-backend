@@ -7,4 +7,4 @@ class KakaoLoginSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['social_id', 'nickname', 'email']
+        fields = ['id', 'nickname', 'email']
