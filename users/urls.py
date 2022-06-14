@@ -18,5 +18,5 @@ urlpatterns = [
     path('profile-update', UserProfileUpdateView.as_view()),
     
     #user_delete_account
-    path('delete-account/<int:user_id>', DeleteAccountView.as_view()),
+    path('delete-account', DeleteAccountView.as_view()),
 ]

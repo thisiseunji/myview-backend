@@ -36,21 +36,24 @@ class KakaoLogInCallbackView(APIView):
             }
 
             token_response = requests.post(kakao_token_api, data=data)
-            access_token   = token_response.json().get('access_token')
-            refresh_token  = token_response.json().get('refresh_token')
+            social_access_token   = token_response.json().get('access_token')
+            social_refresh_token  = token_response.json().get('refresh_token')
+            token_type  = token_response.json().get('token_type')
+            expires_in  = token_response.json().get('refresh_token_expires_in')
+            
             user_info      = requests.get(
                 'https://kapi.kakao.com/v2/user/me',
-                headers={'Authorization': f'Bearer ${access_token}'}
+                headers={'Authorization': f'Bearer ${social_access_token}'}
                 ).json()
 
             kakao_url      = 'https://kapi.kakao.com/v2/user/me'
-            headers        = {'Authorization': f'Bearer {access_token}'}
+            headers        = {'Authorization': f'Bearer {social_access_token}'}
             kakao_response = requests.get(kakao_url, headers = headers, timeout = 5).json()
 
-            social_id      = kakao_response['id']
-            nickname       = kakao_response['kakao_account']['profile']['nickname']
-            profile_image  = kakao_response['kakao_account']['profile']['profile_image_url']
-            email          = kakao_response['kakao_account']['email']
+            social_id          = kakao_response['id']
+            nickname           = kakao_response['kakao_account']['profile']['nickname']
+            profile_image_url  = kakao_response['kakao_account']['profile']['profile_image_url']
+            email              = kakao_response['kakao_account']['email']
 
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
@@ -59,35 +62,37 @@ class KakaoLogInCallbackView(APIView):
                 refresh_token = jwt.encode({'id': user_info.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
 
                 User.objects.filter(id=user_info.id).update(
-                    refresh_token = refresh_token
+                    refresh_token = refresh_token,
+                    is_valid = True
                 )
 
                 token_info = {
-                    'access_token' : access_token,
-                    'refresh_token': refresh_token
+                    'access_token' : social_access_token,
+                    'refresh_token': social_refresh_token
                     }
 
                 data = {
-                    'social_id'     : social_id,
-                    'nickname'      : nickname,
-                    'email'         : email,
-                    'profile_image' : profile_image,
+                    'id'                : user_info.id,
+                    'nickname'          : nickname,
+                    'email'             : email,
+                    'profile_image_url' : profile_image_url,
                 }
-
-                return Response({'user_info': data, 'token_info': token_info}, status=201)
+                
+                user_info = KakaoLoginSerializer(instance=data)
+                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
 
             else:
-                #* 신규 유저가 로그인 할 때 (회원가입)
+                #* 신규 유저가 로그인 할 때 (회원가입) 
                 user = User.objects.create(
                     social_id          = social_id,
                     nickname           = nickname,
-                    social_platform_id = SocialPlatform.objects.get(name="kakao").id,
+                    social_platform    = SocialPlatform.objects.get(name='kakao'),
                     email              = email,
                     group_id           = Group.objects.get(id=2).id,
                 )
-
+                
                 image = Image.objects.create(
-                    image_url = profile_image
+                    image_url = profile_image_url
                 )
 
                 ProfileImage.objects.create(
@@ -104,13 +109,14 @@ class KakaoLogInCallbackView(APIView):
                     }
 
                 data = {
-                    'id'       : user.id,
-                    'nickname' : nickname,
-                    'email'    : email,
+                    'id'                : user.id,
+                    'nickname'          : nickname,
+                    'email'             : email,
+                    'profile_image_url' : image.image_url,
                 }
                 
-                serializer = KakaoLoginSerializer(instance=data)
-                return Response({'user_info': serializer.json(), 'token_info': token_info}, status=201)
+                user_info = KakaoLoginSerializer(instance=data)
+                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
         
         except User.DoesNotExist:
             return JsonResponse({'message': 'INVALID_USER'}, status=400)
@@ -256,7 +262,7 @@ class UserProfileUpdateView(APIView):
         
 class DeleteAccountView(APIView):
     @login_decorator
-    def delete(self, request, user_id):
+    def delete(self, request):
         try:
             user = request.user
             user.is_valid = False
