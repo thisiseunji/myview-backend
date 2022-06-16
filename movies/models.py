@@ -29,7 +29,7 @@ class Movie(TimeStampedModel):
     
     class Meta:
         db_table = 'movies'
-
+        
 class MoviePlatform(models.Model):
     movie    = models.ForeignKey('Movie', on_delete=models.CASCADE)
     platform = models.ForeignKey('Platform', on_delete=models.CASCADE) 
