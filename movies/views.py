@@ -37,13 +37,23 @@ class MovieDetailView(APIView):
             return JsonResponse({'message': 'MOVIE_NOT_EXIST'}, status=400)
 
 
-class MovieTitleView(View):
+class SimpleSearchView(View):
     def get(self, request):
-        data = []
         movies = Movie.objects.all()
-        for i in movies:
-            data.append({
-                'id'    : i.id,
-                'title' : i.title
+        latest = movies.order_by('-release_date', 'title', 'id')[:10]
+        titles = []
+        rank   = []
+        
+        for movie in movies:
+            titles.append({
+                'id'    : movie.id,
+                'title' : movie.title
             })
-        return JsonResponse({'message' : 'SUCCESS', 'data': data}, status=200)
+        
+        for movie in latest:
+            rank.append({
+                'id'    : movie.id,
+                'title' : movie.title
+            })
+        
+        return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
