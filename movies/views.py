@@ -20,7 +20,7 @@ class MovieDetailView(APIView):
                 'description'         : movie.description,
                 'running_time'        : movie.running_time,
                 'age'                 : movie.age,
-                'ratings'             : Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating')),
+                'ratings'             : str(float(Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg'])),
                 'release_date'        : movie.release_date,
                 'country'             : movie.country.name,
                 'category'            : movie.category.name,
