@@ -22,6 +22,9 @@ class Platform(models.Model):
         
 class Movie(TimeStampedModel):
     title        = models.CharField(max_length=200)
+    en_title     = models.CharField(max_length=200, null=True, blank=True)
+    running_time = models.IntegerField(null=True, blank=True)
+    age          = models.IntegerField(null=True, blank=True)
     description  = models.TextField(max_length=1000)
     release_date = models.DateField(auto_now=False, auto_now_add=False)
     country      = models.ForeignKey('Country', on_delete=models.CASCADE)
@@ -74,7 +77,7 @@ class MovieActor(TimeStampedModel):
         db_table = 'movie_actors'
         
 class Video(models.Model):
-    video_url = models.CharField(max_length=50)
+    video_url = models.CharField(max_length=200)
     
     class Meta:
         db_table = 'videos'
