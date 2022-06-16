@@ -4,7 +4,7 @@ from django.views  import View
 
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
-from movies.models  import Movie, Image
+from movies.models  import Image
 from reviews.models import ColorCode, ReviewImage, Tag, Review, ReviewTag
 from my_settings    import AWS_S3_URL
 
@@ -52,52 +52,47 @@ class ReviewView(View):
         except ValueError:
             return JsonResponse({'message' : 'VALUE_ERROR'}, status=400)
         
-    @login_decorator
+    # @login_decorator
     def post(self, request, movie_id):
         try:
-            review = Review.objects.update_or_create(
+            review = Review.objects.create(
                 user         = request.user,
-                movie        = Movie.objects.get(id=movie_id),
-                defaults     = {
-                    'user'         : request.user,
-                    'movie'        : Movie.objects.get(id=movie_id),
-                    'title'        : request.POST('title'),
-                    'content'      : request.POST('content'),
-                    'rating'       : request.POST('rating'),
-                    #가공 0000-00-00 00:00:00
-                    'watched_date' : request.POST('watched_date').split(' ')[0],
-                    'watched_time' : request.POST('watched_time').split(' ')[1],
-                }
+                movie_id     = movie_id,
+                title        = request.POST.get('title'),
+                content      = request.POST.get('content'),
+                rating       = request.POST.get('rating'),
+                watched_date = request.POST.get('watched_date').split(' ')[0],
+                watched_time = request.POST.get('watched_date').split(' ')[1]
             )
             
-            #리뷰 이미지 업로드, 업데이트           
             file_hander = FileHander(s3_client)
             
             review_images = request.FILES.getlist('review_images')
             
             for review_image in review_images:
                 
-                file_name = file_hander.upload(review_image, 'image/review/')
-                image     = Image.objects.get_or_create(image_url=file_name)
+                file_name = file_hander.upload(review_image,'image/review')
+                image     = Image.objects.create(image_url=file_name)
                 
-                ReviewImage.objects.update_or_create(
+                ReviewImage.objects.create(
                     image  = image,
                     review = review,
-                    defaults= {
-                        'image'  : image,
-                        'review' : review
-                    }
                 )
-            
-            if request.POST['tags'].exist():
-                [Tag.objects.update_or_create(name=tag, defaults={'name':tag}) for tag in request.POST['tags']]
+                
+            if request.POST.get('tags') != None or request.POST.get('tags') != '':
+                for tag_name in request.POST.get('tags').split(','):
+                    tag = Tag.objects.get_or_create(name=tag_name.strip())
+                    ReviewTag.objects.create(
+                        review = review,
+                        tag    = tag[0]
+                    )
             
             return JsonResponse({'message':'SUCCESS'}, status=201)
                 
         except KeyError:
             return JsonResponse({'message':'KEY_ERROR'}, status=400)
 
-    @login_decorator
+    #@login_decorator
     def delete(self, request, review_id):
         try:
             review        = Review.objects.get(id=review_id, user=request.user)
@@ -108,6 +103,8 @@ class ReviewView(View):
             for review_image in review_images:
                 file_handler.delete(review_image.image_url)
                 review_image.delete()
+            
+            ReviewTag.objects.filter(review=review).delete()
             
             review.delete()
 

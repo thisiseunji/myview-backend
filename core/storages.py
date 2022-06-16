@@ -13,10 +13,10 @@ class MyS3Client:
         self.s3_client   = boto3_s3
         self.bucket_name = bucket_name
     
-    def upload(self, file, dir=''):
+    def upload(self, file, dir):
         try:
             file_name  = str(uuid.uuid4())
-            image_url  = f'{dir}{file_name}'
+            image_url  = f'{dir}/{file_name}'
             extra_args = {'ContentType' : file.content_type}
             
             self.s3_client.upload_fileobj(
@@ -40,8 +40,8 @@ class FileHander:
     def __init__(self, client):
         self.client = client
         
-    def upload(self, file):
-        return self.client.upload(file, dir='')
+    def upload(self, file, dir):
+        return self.client.upload(file, dir)
     
     def delete(self, file_name):
         return self.client.delete(file_name)
