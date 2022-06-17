@@ -4,17 +4,18 @@ from django.db               import transaction
 from django.db.models        import Avg
 from rest_framework.views    import APIView
 from rest_framework.response import Response
-from my_settings             import AWS_S3_URL
 
 from .models                import *
 from reviews.models         import Review
+from .serializers           import MovieSerializer
+from my_settings            import AWS_S3_URL
 
 class MovieDetailView(APIView):       
     def get(self, request, movie_id):
         try:
             movie = Movie.objects.get(id=movie_id)
             
-            movie_info = {
+            movie_data = {
                 'title'               : movie.title,
                 'en_title'            : movie.en_title,
                 'description'         : movie.description,
@@ -37,10 +38,12 @@ class MovieDetailView(APIView):
                 'video_url'           : [AWS_S3_URL+video.video.video_url for video in MovieVideo.objects.filter(movie_id=movie_id)],
                 }
             
-            return JsonResponse({'movie_info': movie_info}, status=200)
+            movie_serializer = MovieSerializer(instance=movie_data)
+            
+            return Response({'movie_info': movie_serializer.data}, status=200)
         
         except Movie.DoesNotExist:
-            return JsonResponse({'message': 'MOVIE_NOT_EXIST'}, status=400)
+            return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
 
 
 class SimpleSearchView(View):
