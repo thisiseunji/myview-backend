@@ -15,8 +15,8 @@ urlpatterns = [
     path('info', UserInformationView.as_view()),
     
     #user_profile_update
-    path('profile-update', UserProfileUpdateView.as_view()),
+    path('update', UserProfileUpdateView.as_view()),
     
-    #user_delete_account
-    path('delete-account', DeleteAccountView.as_view()),
+    #user_delete
+    path('delete', DeleteAccountView.as_view()),
 ]
