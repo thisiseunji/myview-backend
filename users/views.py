@@ -9,7 +9,6 @@ from rest_framework.response import Response
 from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
 from movies.models     import Image
 from core.utils        import login_decorator
-from users.serializers import KakaoLoginSerializer
 from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
@@ -79,16 +78,8 @@ class KakaoLogInCallbackView(APIView):
                     'access_token' : access_token,
                     'refresh_token': refresh_token
                     }
-
-                data = {
-                    'id'                : user.id,
-                    'nickname'          : user.nickname,
-                    'email'             : user.email,
-                    'profile_image_url' : ProfileImage.objects.get(user_id=user.id).image.image_url,
-                }
                 
-                user_info = KakaoLoginSerializer(instance=data)
-                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
+                return Response({'token_info': token_info}, status=201)
 
             #* 신규 유저가 로그인 할 때 (회원가입) 
             else:
@@ -119,22 +110,14 @@ class KakaoLogInCallbackView(APIView):
                     'access_token' : access_token,
                     'refresh_token': refresh_token
                     }
-
-                data = {
-                    'id'                : user.id,
-                    'nickname'          : user.nickname,
-                    'email'             : user.email,
-                    'profile_image_url' : ProfileImage.objects.get(user_id=user.id).image.image_url,
-                }
                 
-                user_info = KakaoLoginSerializer(instance=data)
-                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
+                return Response({'token_info': token_info}, status=201)
         
         except User.DoesNotExist:
-            return JsonResponse({'message': 'INVALID_USER'}, status=400)
+            return Response({'message': 'INVALID_USER'}, status=400)
         
         except KeyError:
-            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+            return Response({'message': 'KEY_ERROR'}, status=400)
         
 #NaverLogin
 # TODO : DRF 적용
