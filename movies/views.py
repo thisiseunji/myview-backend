@@ -66,3 +66,16 @@ class SimpleSearchView(View):
             })
         
         return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
+    
+    
+class ActorView(APIView):
+    def get(self, reques, actor_id):
+        actor = Actor.objects.get(id=actor_id)
+        
+        actor_data = {
+            'actor_name' : actor.name,
+            'actor_image_url' : actor.image.image_url,
+            'actor_country' : actor.country.name
+        }
+        
+        return Response({'actor_info': actor_data}, status=200)
