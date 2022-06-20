@@ -4,6 +4,7 @@ from django.db               import transaction
 from django.db.models        import Avg
 from rest_framework.views    import APIView
 from rest_framework.response import Response
+from datetime                import datetime
 
 from .models                import *
 from reviews.models         import Review
@@ -14,6 +15,7 @@ class MovieDetailView(APIView):
     def get(self, request, movie_id):
         try:
             movie = Movie.objects.get(id=movie_id)
+            review_ratings = Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg']
             
             movie_data = {
                 'title'               : movie.title,
@@ -21,7 +23,7 @@ class MovieDetailView(APIView):
                 'description'         : movie.description,
                 'running_time'        : movie.running_time,
                 'age'                 : movie.age,
-                'ratings'             : str(float(Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg'])),
+                'ratings'             : str(float(review_ratings)) if review_ratings else 0,
                 'release_date'        : movie.release_date,
                 'country'             : movie.country.name,
                 'category'            : movie.category.name,
@@ -70,12 +72,21 @@ class SimpleSearchView(View):
     
 class ActorView(APIView):
     def get(self, reques, actor_id):
-        actor = Actor.objects.get(id=actor_id)
+        actor      = Actor.objects.get(id=actor_id)
+        movie_list = MovieActor.objects.filter(actor_id=actor_id)
         
         actor_data = {
-            'actor_name' : actor.name,
-            'actor_image_url' : actor.image.image_url,
-            'actor_country' : actor.country.name
+            'name'      : actor.name,
+            'image_url' : AWS_S3_URL+actor.image.image_url,
+            'country'   : actor.country.name,
+            'starring_list' : [{
+                 'title'               : movie.movie.title,
+                 'release'             : datetime.strftime(movie.movie.release_date, '%Y'),
+                 'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.movie.id).image.image_url,
+                 'role_name'           : movie.role.name,
+                 'ratings'             : str(float(Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
+                 'platform'            : MoviePlatform.objects.get(movie_id=movie.movie.id).platform.name,
+                } for movie in movie_list]
         }
         
         return Response({'actor_info': actor_data}, status=200)
