@@ -94,3 +94,16 @@ class ActorDetailView(APIView):
         
         except Actor.DoesNotExist:
             return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
+        
+        
+class ActorListView(APIView):
+    def get(self, request):
+        actors = Actor.objects.all().order_by('name')
+        
+        actor_list = [{
+            'name' : actor.name,
+            'country' : actor.country.name,
+            'image_url': AWS_S3_URL+actor.image.image_url
+        } for actor in actors]
+        
+        return Response({'actor_list': actor_list}, status=200)
