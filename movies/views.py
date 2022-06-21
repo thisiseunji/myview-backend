@@ -70,23 +70,27 @@ class SimpleSearchView(View):
         return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
     
     
-class ActorView(APIView):
-    def get(self, reques, actor_id):
-        actor      = Actor.objects.get(id=actor_id)
-        movie_list = MovieActor.objects.filter(actor_id=actor_id)
+class ActorDetailView(APIView):
+    def get(self, request, actor_id):
+        try:
+            actor      = Actor.objects.get(id=actor_id)
+            movie_list = MovieActor.objects.filter(actor_id=actor_id)
+            
+            actor_data = {
+                'name'      : actor.name,
+                'image_url' : AWS_S3_URL+actor.image.image_url,
+                'country'   : actor.country.name,
+                'starring_list' : [{
+                    'title'               : movie.movie.title,
+                    'release'             : datetime.strftime(movie.movie.release_date, '%Y'),
+                    'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.movie.id).image.image_url,
+                    'role_name'           : movie.role.name,
+                    'ratings'             : str(float(Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
+                    'platform'            : MoviePlatform.objects.get(movie_id=movie.movie.id).platform.name,
+                    } for movie in movie_list]
+            }
+            
+            return Response({'actor_info': actor_data}, status=200)
         
-        actor_data = {
-            'name'      : actor.name,
-            'image_url' : AWS_S3_URL+actor.image.image_url,
-            'country'   : actor.country.name,
-            'starring_list' : [{
-                 'title'               : movie.movie.title,
-                 'release'             : datetime.strftime(movie.movie.release_date, '%Y'),
-                 'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.movie.id).image.image_url,
-                 'role_name'           : movie.role.name,
-                 'ratings'             : str(float(Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
-                 'platform'            : MoviePlatform.objects.get(movie_id=movie.movie.id).platform.name,
-                } for movie in movie_list]
-        }
-        
-        return Response({'actor_info': actor_data}, status=200)
+        except Actor.DoesNotExist:
+            return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
