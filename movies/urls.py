@@ -1,5 +1,5 @@
 from django.urls  import path
-from movies.views import MovieDetailView, SimpleSearchView, ActorView
+from movies.views import MovieDetailView, SimpleSearchView, ActorDetailView
 
 urlpatterns = [
     # 영화 상세페이지
@@ -9,5 +9,5 @@ urlpatterns = [
     path('simple', SimpleSearchView.as_view()),
     
     # 영화배우 상세페이지
-    path('actor/<int:actor_id>', ActorView.as_view()),
+    path('actor/<int:actor_id>', ActorDetailView.as_view()),
 ]
