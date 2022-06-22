@@ -125,9 +125,6 @@ class ActorDetailView(APIView):
             return Response({'message': 'KEY_ERROR'}, status=400)
         
         
-        
-        
-        
 class ActorListView(APIView):
     def get(self, request):
         actors = Actor.objects.all().order_by('name')
