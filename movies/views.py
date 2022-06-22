@@ -1,6 +1,5 @@
 from django.http             import JsonResponse
 from django.views            import View
-from django.db               import transaction
 from django.db.models        import Avg
 from rest_framework.views    import APIView
 from rest_framework.response import Response
