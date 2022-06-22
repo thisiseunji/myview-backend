@@ -95,6 +95,35 @@ class ActorDetailView(APIView):
         except Actor.DoesNotExist:
             return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
         
+    def post(self, request):
+        try:
+            data         = request.data
+            actor_name   = data['actor_name']
+            country_name = data['country_name']
+            image_url    = data['image_url']
+            
+            if Actor.objects.filter(name=actor_name):
+                return Response({'message': 'ALREADY_ACTOR'}, status=400)
+            
+            else:
+                country, created = Country.objects.get_or_create(
+                name = country_name,
+                defaults={'name':country_name}
+                )
+            
+                image = Image.objects.create(image_url=image_url)
+            
+                Actor.objects.create(
+                    name    = actor_name,
+                    country = country,
+                    image   = image
+                )
+            
+                return Response({'message': 'CREATE_SUCCESS'}, status=201)
+            
+        except KeyError:
+            return Response({'message': 'KEY_ERROR'}, status=400)
+        
         
 class ActorListView(APIView):
     def get(self, request):
