@@ -4,19 +4,22 @@ from django.db.models        import Avg
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 from datetime                import datetime
+from django.db               import transaction
 
 from .models                import *
 from reviews.models         import Review
 from .serializers           import MovieSerializer
 from my_settings            import AWS_S3_URL
+from core.storages          import s3_client, FileHander
 
-class MovieDetailView(APIView):       
+class MovieDetailView(APIView):
     def get(self, request, movie_id):
         try:
             movie = Movie.objects.get(id=movie_id)
             review_ratings = Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg']
             
             movie_data = {
+                'id'                  : movie.id,
                 'title'               : movie.title,
                 'en_title'            : movie.en_title,
                 'description'         : movie.description,
@@ -27,13 +30,14 @@ class MovieDetailView(APIView):
                 'country'             : movie.country.name,
                 'category'            : movie.category.name,
                 'genre'               : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie_id)],
-                'actor'               : [{'id'        : movie_actor.actor.id,
-                                          'name'      : movie_actor.actor.name,
-                                          'country'   : movie_actor.actor.country.name,
-                                          'image'     : AWS_S3_URL+movie_actor.actor.image.image_url,
-                                          'role'      : movie_actor.role.name,
-                                          'role_name' : movie_actor.role_name,
-                                          } for movie_actor in MovieActor.objects.filter(movie_id=movie_id)],  
+                'actor'               : [{
+                    'id'        : movie_actor.actor.id,
+                    'name'      : movie_actor.actor.name,
+                    'country'   : movie_actor.actor.country.name,
+                    'image'     : AWS_S3_URL+movie_actor.actor.image.image_url,
+                    'role'      : movie_actor.role.name,
+                    'role_name' : movie_actor.role_name,
+                } for movie_actor in MovieActor.objects.filter(movie_id=movie_id)],  
                 'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_id).image.image_url,
                 'image_url'           : [AWS_S3_URL+image.image.image_url for image in MovieImage.objects.filter(movie_id=movie_id)],
                 'video_url'           : [AWS_S3_URL+video.video.video_url for video in MovieVideo.objects.filter(movie_id=movie_id)],
@@ -76,6 +80,7 @@ class ActorDetailView(APIView):
             movie_list = MovieActor.objects.filter(actor_id=actor_id)
             
             actor_data = {
+                'id'        : actor.id,
                 'name'      : actor.name,
                 'image_url' : AWS_S3_URL+actor.image.image_url,
                 'country'   : actor.country.name,
@@ -94,6 +99,7 @@ class ActorDetailView(APIView):
         except Actor.DoesNotExist:
             return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
         
+    @transaction.atomic(using='default')
     def post(self, request):
         try:
             data         = request.data
@@ -109,7 +115,8 @@ class ActorDetailView(APIView):
                 name = country_name,
                 defaults={'name':country_name}
                 )
-            
+
+                image_url = FileHander(s3_client).upload(image_url, 'image/actor')
                 image = Image.objects.create(image_url=image_url)
             
                 Actor.objects.create(
@@ -129,8 +136,9 @@ class ActorListView(APIView):
         actors = Actor.objects.all().order_by('name')
         
         actor_list = [{
-            'name' : actor.name,
-            'country' : actor.country.name,
+            'id'       : actor.id,
+            'name'     : actor.name,
+            'country'  : actor.country.name,
             'image_url': AWS_S3_URL+actor.image.image_url
         } for actor in actors]
         
