@@ -6,10 +6,9 @@ from django.http             import JsonResponse
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from users.models      import User, SocialPlatform, Group, ProfileImage
+from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
 from movies.models     import Image
 from core.utils        import login_decorator
-from users.serializers import KakaoLoginSerializer
 from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
@@ -50,45 +49,46 @@ class KakaoLogInCallbackView(APIView):
             headers        = {'Authorization': f'Bearer {social_access_token}'}
             kakao_response = requests.get(kakao_url, headers = headers, timeout = 5).json()
 
-            social_id          = kakao_response['id']
-            nickname           = kakao_response['kakao_account']['profile']['nickname']
-            profile_image_url  = kakao_response['kakao_account']['profile']['profile_image_url']
-            email              = kakao_response['kakao_account']['email']
-
+            social_id         = kakao_response['id']
+            nickname          = kakao_response['kakao_account']['profile']['nickname']
+            profile_image_url = kakao_response['kakao_account']['profile']['profile_image_url']
+            email             = kakao_response['kakao_account']['email']
+            
+            SocialToken.objects.update_or_create(
+                    refresh_token = social_refresh_token,
+                    defaults={
+                        'access_token'  : social_access_token,
+                        'refresh_token' : social_refresh_token,
+                        'token_type'    : token_type,
+                        'expires_in'    : expires_in,
+                    }
+                )
+            
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
-                user_info     = User.objects.get(social_id=social_id)
-                access_token  = jwt.encode({'id': user_info.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
-                refresh_token = jwt.encode({'id': user_info.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
+                user          = User.objects.get(social_id=social_id)
+                access_token  = jwt.encode({'id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
+                refresh_token = jwt.encode({'id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
 
-                User.objects.filter(id=user_info.id).update(
+                User.objects.filter(id=user.id).update(
                     refresh_token = refresh_token,
-                    is_valid = True
                 )
-
-                token_info = {
-                    'access_token' : social_access_token,
-                    'refresh_token': social_refresh_token
-                    }
-
-                data = {
-                    'id'                : user_info.id,
-                    'nickname'          : nickname,
-                    'email'             : email,
-                    'profile_image_url' : profile_image_url,
-                }
                 
-                user_info = KakaoLoginSerializer(instance=data)
-                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
+                token_info = {
+                    'access_token' : access_token,
+                    'refresh_token': refresh_token
+                    }
+                
+                return Response({'token_info': token_info}, status=201)
 
+            #* 신규 유저가 로그인 할 때 (회원가입) 
             else:
-                #* 신규 유저가 로그인 할 때 (회원가입) 
                 user = User.objects.create(
-                    social_id          = social_id,
-                    nickname           = nickname,
-                    social_platform    = SocialPlatform.objects.get(name='kakao'),
-                    email              = email,
-                    group_id           = Group.objects.get(id=2).id,
+                    social_id       = social_id,
+                    nickname        = nickname,
+                    social_platform = SocialPlatform.objects.get(name='kakao'),
+                    email           = email,
+                    group_id        = Group.objects.get(id=2).id,
                 )
                 
                 image = Image.objects.create(
@@ -99,32 +99,26 @@ class KakaoLogInCallbackView(APIView):
                     user  = user,
                     image = image
                 )
+                
+                access_token  = jwt.encode({'id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
+                refresh_token = jwt.encode({'id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
 
-                access_token  = jwt.encode({'id': social_id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
-                refresh_token = jwt.encode({'id': social_id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
-
+                user.refresh_token=refresh_token
+                user.save()
+                
                 token_info = {
                     'access_token' : access_token,
                     'refresh_token': refresh_token
                     }
-
-                data = {
-                    'id'                : user.id,
-                    'nickname'          : nickname,
-                    'email'             : email,
-                    'profile_image_url' : image.image_url,
-                }
                 
-                user_info = KakaoLoginSerializer(instance=data)
-                return Response({'user_info': user_info.data, 'token_info': token_info}, status=201)
+                return Response({'token_info': token_info}, status=201)
         
         except User.DoesNotExist:
-            return JsonResponse({'message': 'INVALID_USER'}, status=400)
+            return Response({'message': 'INVALID_USER'}, status=400)
         
         except KeyError:
-            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+            return Response({'message': 'KEY_ERROR'}, status=400)
         
-
 #NaverLogin
 # TODO : DRF 적용
 class LoginNaverView(View):
@@ -134,7 +128,6 @@ class LoginNaverView(View):
             naver_refresh_token = request.GET.get('refresh_token')
             headers             = {'Authorization' : 'Bearer '+ naver_access_token}
             profile_api_url     = "https://openapi.naver.com/v1/nid/me"
-            
             user_info_dict      = requests.get(profile_api_url, headers=headers, timeout=5).json()
             user_info           = user_info_dict['response']
 
@@ -143,27 +136,21 @@ class LoginNaverView(View):
             
             user = User.objects.filter(social_id=user_info['id'])
             
-            if(user.exists()):
+            if user.exists():
                 user = User.objects.get(social_id=user_info['id'])
-                #user.refresh_token = naver_refresh_token
-                #user.save()
                 
             else:
                 user = User.objects.create(
                     social_id       = user_info['id'],
                     nickname        = user_info['name'],
                     email           = user_info['email'],
-                    group           = Group.objects.get(name='general'),
-                    #refresh_token   = naver_refresh_token,
-                    social_platform = SocialPlatform.objects.get(name='naver')
+                    group           = Group.objects.get(id=2),
+                    social_platform = SocialPlatform.objects.get(id=3)
                 )
                 
-                # TODO : S3업로더 생성 후 S3업로드하고, image_url 반영
-                default_image_url = 'https://cdn.pixabay.com/photo/2018/11/13/21/43/avatar-3814049_1280.png'
-            
-                user_image = Image.objects.create(image_url=user_info['profile_image', default_image_url])
-                ProfileImage.objects.create(user=user, image=user_image)
-            
+                user_image    = Image.objects.create(image_url=user_info['profile_image'])
+                profile_image = ProfileImage.objects.create(user_id=user.id, image_id=user_image.id)
+                
             access_token = jwt.encode({'id':user.id, 
                 'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
             
@@ -179,8 +166,8 @@ class LoginNaverView(View):
             }
             
             return JsonResponse({
-                'message':'SUCCESS',
-                'token_info': token_info
+                'message'   : 'SUCCESS',
+                'token_info': token_info,
                 }, status=200)        
 
         except KeyError:
@@ -193,7 +180,7 @@ class LoginNaverCallBackView(View):
     def get(self, request):
         token_api_uri = 'https://nid.naver.com/oauth2.0/token'
         data = {
-            'grant_type'    :'authorization_code',
+            'grant_type'    : 'authorization_code',
             'client_id'     : NAVER_CLIENT_ID,
             'client_secret' : NAVER_CLIENT_SECRET,
             'code'          : request.GET.get('code'),
@@ -203,15 +190,13 @@ class LoginNaverCallBackView(View):
         
         token_response = requests.post(token_api_uri, data=data)
         token_info     = token_response.json()
+        access_token   = token_info['access_token']
+        refresh_token  = token_info['refresh_token']
+        token_type     = token_info['token_type']
+        expires_in     = token_info['expires_in']
         
-        access_token  = token_info['access_token']
-        refresh_token = token_info['refresh_token']
-        token_type    = token_info['token_type']
-        expires_in    = token_info['expires_in']
-        
-        return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
-
-      
+        return redirect(f'http://172.30.1.39:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+     
 class UserInformationView(View):
     @login_decorator
     def get(self, request):
@@ -231,7 +216,6 @@ class UserInformationView(View):
         except ValueError:
             return JsonResponse({'message':'VALUE_ERROR'}, status=400)
         
-
 class UserProfileUpdateView(APIView):
     @login_decorator
     def patch(self, request):
@@ -258,7 +242,6 @@ class UserProfileUpdateView(APIView):
         
         except KeyError:
             return Response({'message': 'KEY_ERROR'}, status=400)
-
         
 class DeleteAccountView(APIView):
     @login_decorator
