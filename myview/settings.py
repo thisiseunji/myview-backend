@@ -155,3 +155,5 @@ CORS_ALLOW_HEADERS = (
     'x-csrftoken',
     'x-requested-with',
 )
+#Transaction
+ATOMIC_REQUESTS = True
