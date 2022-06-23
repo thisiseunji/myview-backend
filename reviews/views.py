@@ -6,44 +6,43 @@ from django.db      import transaction
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
 from movies.models  import Image, MovieGenre, ThumbnailImage
-from reviews.models import ColorCode, ReviewImage, Tag, Review, ReviewTag
+from reviews.models import ColorCode, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models   import User
 from my_settings    import AWS_S3_URL
 
 class ReviewView(View):
     @login_decorator
-    def get(self, request):
+    def get(self, request, review_id):
         try:
-            user    = request.user
-            reviews = User.objects.get(id=user.id).reviews_set.all()
-            result  = [
-                { 
-                    'review_id'     : review.id,
-                    'title'         : review.title,
-                    'content'       : review.content,
-                    'rating'        : review.rating,
-                    'with_user'     : review.with_user,
-                    'watched_date'  : f'{review.watched_date} {review.watched_time}',
-                    'review_images' : [AWS_S3_URL+review_image.image.image_url for review_image in ReviewImage.objects.filter(review=review)],
-                    #값이 없을 경우 리턴 값 설정
-                    'place '        : {
-                            'name' : review.review_places.name,
-                            'mapx' : review.review_places.mapx,
-                            'mapy' : review.review_places.mapy,
-                            'link' : review.review_places.link   
-                    } if review.review_places.exists() else None,
-                    'tags'          : [
-                        {
-                            'tag'   : review_tag.tag.name, 
-                            'color' : ColorCode.objects.get(id=randrange(0,4))
-                        } for review_tag in ReviewTag.objects.filter(review=review)],
-                    'movie'         : {
-                        'id'       : review.movie.id,
-                        'title'    : review.movie.title,
-                        'country'  : review.movie.country,
-                        'category' : review.movie.category,
-                    }
-                } for review in reviews]
+            user   = request.user
+            review = Review.objects.get(id=review_id)
+            result = { 
+                'review_id'     : review.id,
+                'title'         : review.title,
+                'content'       : review.content,
+                'rating'        : review.rating,
+                'with_user'     : review.with_user,
+                'watched_date'  : f'{review.watched_date} {review.watched_time}',
+                'review_images' : [AWS_S3_URL+review_image.image.image_url for review_image in ReviewImage.objects.filter(review=review)],
+                #값이 없을 경우 리턴 값 설정
+                'place '        : {
+                        'name' : ReviewPlace.objects.get(review_id=review_id).place.name,
+                        'mapx' : ReviewPlace.objects.get(review_id=review_id).place.mapx,
+                        'mapy' : ReviewPlace.objects.get(review_id=review_id).place.mapy,
+                        'link' : ReviewPlace.objects.get(review_id=review_id).place.link   
+                } if ReviewPlace.objects.filter(review_id=review_id).exists() else [],
+                'tags'          : [
+                    {
+                        'tag'   : review_tag.tag.name, 
+                        'color' : ColorCode.objects.get(id=randrange(0,4))
+                    } for review_tag in ReviewTag.objects.filter(review=review)],
+                'movie'         : {
+                    'id'       : review.movie.id,
+                    'title'    : review.movie.title,
+                    'country'  : review.movie.country.name,
+                    'category' : review.movie.category.name,
+                }
+            }
         
             return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
 
