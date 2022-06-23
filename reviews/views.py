@@ -104,10 +104,10 @@ class ReviewView(View):
                         tag    = tag[0]
                     )
             
-            return JsonResponse({'message':'SUCCESS'}, status=201)
+            return JsonResponse({'message' : 'SUCCESS'}, status=201)
                 
         except KeyError:
-            return JsonResponse({'message':'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
     @login_decorator
     def delete(self, request, review_id):
