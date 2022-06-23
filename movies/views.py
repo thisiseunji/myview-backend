@@ -64,12 +64,15 @@ class SimpleSearchView(View):
                 'title' : movie.title
             })
         
+        ranking = 1
         for movie in latest:
             rank.append({
+                'rank'  : ranking,
                 'id'    : movie.id,
                 'title' : movie.title
             })
-        
+            ranking += 1
+            
         return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
     
     
