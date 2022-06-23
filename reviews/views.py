@@ -54,7 +54,7 @@ class ReviewView(View):
             return JsonResponse({'message' : 'VALUE_ERROR'}, status=400)
         
     @login_decorator
-    @transaction.atomic()
+    @transaction.atomic(using='default')
     def post(self, request, movie_id):
         try:
             review, created = Review.objects.update_or_create(
