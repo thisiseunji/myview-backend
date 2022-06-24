@@ -13,5 +13,5 @@ urlpatterns = [
     path('/actor', ActorDetailView.as_view()),
     
     # 영화배우 리스트
-    path('/actor', ActorListView.as_view()),
+    path('/actor/list', ActorListView.as_view()),
 ]

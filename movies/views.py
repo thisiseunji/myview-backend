@@ -111,10 +111,7 @@ class ActorDetailView(APIView):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
             
             else:
-                country, created = Country.objects.get_or_create(
-                name = country_name,
-                defaults={'name':country_name}
-                )
+                country = Country.objects.get(name=country_name)
 
                 image_url = FileHander(s3_client).upload(image_url, 'image/actor')
                 image = Image.objects.create(image_url=image_url)
@@ -129,6 +126,32 @@ class ActorDetailView(APIView):
             
         except KeyError:
             return Response({'message': 'KEY_ERROR'}, status=400)
+        
+    def patch(self, request):
+        data         = request.data
+        actor_id     = data['actor_id']
+        actor_name   = data.get('actor_name')
+        country_name = data.get('country_name')
+        image_url    = data.get('image_url')
+        
+        actor = Actor.objects.get(id=actor_id)
+        
+        if actor_name:
+            actor.name=actor_name
+        if country_name:
+            actor.country = Country.objects.get(name=country_name)
+        if image_url:
+            #* 기존 이미지 S3에서 삭제
+            delete_image_url = AWS_S3_URL+actor.image.image_url
+            image_url = FileHander(s3_client).delete(delete_image_url)
+            #* 새로운 이미지 S3에 업로드 & db데이터 업데이트
+            image_url = FileHander(s3_client).upload(image_url, 'image/actor')
+            actor.image.image_url=image_url
+            
+        with transaction.atomic():
+            actor.save()
+            
+        return Response({'message': 'ACTOR_UPDATE_SUCCESS'}, status=201)
         
         
 class ActorListView(APIView):
