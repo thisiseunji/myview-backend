@@ -142,8 +142,8 @@ class ActorDetailView(APIView):
             actor.country = Country.objects.get(name=country_name)
         if image_url:
             #* 기존 이미지 S3에서 삭제
-            delete_image_url = AWS_S3_URL+actor.image.image_url
-            image_url = FileHander(s3_client).delete(delete_image_url)
+            delete_image_url = actor.image.image_url
+            FileHander(s3_client).delete(delete_image_url)
             #* 새로운 이미지 S3에 업로드 & db데이터 업데이트
             image_url = FileHander(s3_client).upload(image_url, 'image/actor')
             actor.image.image_url=image_url
