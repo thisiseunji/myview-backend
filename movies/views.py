@@ -113,29 +113,26 @@ class ActorDetailView(APIView):
             data         = request.data
             name         = data['name']
             image_url    = data['image_url']
-            country_name = data['country_name']
+            country_id   = data['country_id']
             birth        = data['birth']
             debut        = data['debut']
             debut_year   = data['debut_year']
             height       = data.get('height', 0)
             weight       = data.get('weight', 0)
-            job          = data['job']
+            job_id_list  = data.getlist('job_id')
+            
             
             if Actor.objects.filter(name=name):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
             
             else:
-                #* image S3 upload
                 image_url = FileHander(s3_client).upload(image_url, 'image/actor')
                 image     = Image.objects.create(image_url=image_url)
-                
-                country   = Country.objects.get(name=country_name)
-                job       = Job.objects.get(name=job)
                 
                 actor = Actor.objects.create(
                     name       = name,
                     image      = image,
-                    country    = country,
+                    country    = Country.objects.get(id=country_id),
                     birth      = birth,
                     debut      = debut,
                     debut_year = debut_year,
@@ -143,10 +140,10 @@ class ActorDetailView(APIView):
                     weight     = weight,
                 )
                 
-                ActorJob.objects.create(
-                    actor = actor,
-                    job   = job,
-                )
+                ActorJob.objects.bulk_create([
+                    ActorJob(actor = actor,
+                             job   = Job.objects.get(id=job_id)
+                ) for job_id in job_id_list])
             
                 return Response({'message': 'CREATE_SUCCESS'}, status=201)
             
