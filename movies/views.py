@@ -78,12 +78,19 @@ class ActorDetailView(APIView):
         try:
             actor      = Actor.objects.get(id=actor_id)
             movie_list = MovieActor.objects.filter(actor_id=actor_id)
+            job_list   = ActorJob.objects.filter(actor_id=actor_id)
             
             actor_data = {
-                'id'        : actor.id,
-                'name'      : actor.name,
-                'image_url' : AWS_S3_URL+actor.image.image_url,
-                'country'   : actor.country.name,
+                'id'            : actor.id,
+                'name'          : actor.name,
+                'image_url'     : AWS_S3_URL+actor.image.image_url,
+                'country'       : actor.country.name,
+                'birth'         : actor.birth,
+                'debut'         : actor.debut,
+                'debut_year'    : actor.debut_year,
+                'height'        : actor.height,
+                'weight'        : actor.weight,
+                'job'           : [job.job.name for job in job_list],
                 'starring_list' : [{
                     'title'               : movie.movie.title,
                     'release'             : datetime.strftime(movie.movie.release_date, '%Y'),
@@ -91,6 +98,7 @@ class ActorDetailView(APIView):
                     'role_name'           : movie.role.name,
                     'ratings'             : str(float(Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
                     'platform'            : MoviePlatform.objects.get(movie_id=movie.movie.id).platform.name,
+                    'platform_logo_image' : AWS_S3_URL+MoviePlatform.objects.get(movie_id=movie.movie.id).platform.image_url,
                     } for movie in movie_list]
             }
             
