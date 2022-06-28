@@ -8,6 +8,12 @@ class Country(models.Model):
     class Meta:
         db_table = 'countries'
         
+class Job(models.Model):
+    name = models.CharField(max_length=50)
+    
+    class Meta:
+        db_table = 'jobs'
+        
 class Category(models.Model):
     name = models.CharField(max_length=100)
     
@@ -15,7 +21,8 @@ class Category(models.Model):
         db_table = 'categories'
 
 class Platform(models.Model):
-    name = models.CharField(max_length=100)
+    name      = models.CharField(max_length=100)
+    image_url = models.URLField(max_length=200, blank=True, null=True)
     
     class Meta:
         db_table = 'platforms'
@@ -54,12 +61,24 @@ class MovieGenre(models.Model):
         db_table = 'movie_genres'
 
 class Actor(models.Model):
-    name    = models.CharField(max_length=100)
-    country = models.ForeignKey('Country', on_delete=models.CASCADE)
-    image   = models.ForeignKey('Image', on_delete=models.CASCADE)
+    name       = models.CharField(max_length=100)
+    birth      = models.DateField(blank=True, null=True)
+    debut      = models.CharField(max_length=50, blank=True)
+    debut_year = models.IntegerField(blank=True, null=True)
+    height     = models.IntegerField(blank=True, null=True)
+    weight     = models.IntegerField(blank=True, null=True)
+    country    = models.ForeignKey('Country', on_delete=models.CASCADE)
+    image      = models.ForeignKey('Image', on_delete=models.CASCADE)
     
     class Meta:
         db_table = 'actors'
+        
+class ActorJob(models.Model):
+    actor = models.ForeignKey('Actor', on_delete=models.CASCADE)
+    job   = models.ForeignKey('Job', on_delete=models.CASCADE)
+    
+    class Meta:
+        db_table = 'actor_jobs'
 
 class Role(models.Model):
     name = models.CharField(max_length=50)
