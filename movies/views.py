@@ -30,6 +30,8 @@ class MovieDetailView(APIView):
                 'country'             : movie.country.name,
                 'category'            : movie.category.name,
                 'genre'               : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie_id)],
+                'platform_name'       : MoviePlatform.objects.get(movie_id=movie.id).platform.name,
+                'platform_logo_image' : AWS_S3_URL+MoviePlatform.objects.get(movie_id=movie.id).platform.image_url,
                 'actor'               : [{
                     'id'        : movie_actor.actor.id,
                     'name'      : movie_actor.actor.name,
@@ -43,9 +45,7 @@ class MovieDetailView(APIView):
                 'video_url'           : [AWS_S3_URL+video.video.video_url for video in MovieVideo.objects.filter(movie_id=movie_id)],
                 }
             
-            movie_serializer = MovieSerializer(instance=movie_data)
-            
-            return Response({'movie_info': movie_serializer.data}, status=200)
+            return Response({'movie_info': movie_data}, status=200)
         
         except Movie.DoesNotExist:
             return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
