@@ -121,8 +121,7 @@ class ActorDetailView(APIView):
             weight       = data.get('weight', 0)
             job_id_list  = data.getlist('job_id')
             
-            
-            if Actor.objects.filter(name=name):
+            if Actor.objects.filter(name=name, birth=birth):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
             
             else:
