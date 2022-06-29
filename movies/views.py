@@ -111,24 +111,38 @@ class ActorDetailView(APIView):
     def post(self, request):
         try:
             data         = request.data
-            actor_name   = data['actor_name']
-            country_name = data['country_name']
+            name         = data['name']
             image_url    = data['image_url']
+            country_id   = data['country_id']
+            birth        = data['birth']
+            debut        = data['debut']
+            debut_year   = data['debut_year']
+            height       = data.get('height', 0)
+            weight       = data.get('weight', 0)
+            job_id_list  = data.getlist('job_id')
             
-            if Actor.objects.filter(name=actor_name):
+            if Actor.objects.filter(name=name, birth=birth):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
             
             else:
-                country = Country.objects.get(name=country_name)
-
                 image_url = FileHander(s3_client).upload(image_url, 'image/actor')
-                image = Image.objects.create(image_url=image_url)
-            
-                Actor.objects.create(
-                    name    = actor_name,
-                    country = country,
-                    image   = image
+                image     = Image.objects.create(image_url=image_url)
+                
+                actor = Actor.objects.create(
+                    name       = name,
+                    image      = image,
+                    country    = Country.objects.get(id=country_id),
+                    birth      = birth,
+                    debut      = debut,
+                    debut_year = debut_year,
+                    height     = height,
+                    weight     = weight,
                 )
+                
+                ActorJob.objects.bulk_create([
+                    ActorJob(actor = actor,
+                             job   = Job.objects.get(id=job_id)
+                ) for job_id in job_id_list])
             
                 return Response({'message': 'CREATE_SUCCESS'}, status=201)
             
