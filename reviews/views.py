@@ -6,7 +6,7 @@ from django.db      import transaction
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
 from movies.models  import Image, MovieGenre, ThumbnailImage
-from reviews.models import ColorCode, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
+from reviews.models import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models   import User
 from my_settings    import AWS_S3_URL
 
@@ -25,7 +25,7 @@ class ReviewView(View):
                 'watched_date'  : f'{review.watched_date} {review.watched_time}',
                 'review_images' : [AWS_S3_URL+review_image.image.image_url for review_image in ReviewImage.objects.filter(review=review)],
                 #값이 없을 경우 리턴 값 설정
-                'place '        : {
+                'place'         : {
                         'name' : ReviewPlace.objects.get(review_id=review_id).place.name,
                         'mapx' : ReviewPlace.objects.get(review_id=review_id).place.mapx,
                         'mapy' : ReviewPlace.objects.get(review_id=review_id).place.mapy,
@@ -64,9 +64,22 @@ class ReviewView(View):
                     'content'      : request.POST.get('content'),
                     'rating'       : request.POST.get('rating'),
                     'watched_date' : request.POST.get('watched_date').split(' ')[0],
-                    'watched_time' : request.POST.get('watched_date').split(' ')[1]
+                    'watched_time' : request.POST.get('watched_date').split(' ')[1],
+                    'with_uesr'    : request.POST.get('with_user')
                 }
             )
+            
+            place = request.POST.get('place')
+            
+            if place != None:
+                place, created = Place.objects.get_or_create(
+                    mapx     = place['mapx', 0],
+                    mapy     = place['mapy', 0],
+                    defaults = {
+                        'name' : place['name'],
+                        'link' : place['link']
+                    }
+                )
             
             file_handler = FileHander(s3_client)
             
