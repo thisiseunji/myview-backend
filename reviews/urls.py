@@ -1,11 +1,11 @@
 from django.urls  import path
-from reviews.views import ReviewView
+from reviews.views import ReviewListView, ReviewView
 
 urlpatterns = [
-    #read
-    path('', ReviewView.as_view()),
+    #list
+    path('', ReviewListView.as_view()),
     #create
-    path('/movies/<int:movie_id>', ReviewView.as_view()),
-    #delete
+    path('/movie/<int:movie_id>', ReviewView.as_view()),
+    #read, delete
     path('/<int:review_id>', ReviewView.as_view()),
 ]
