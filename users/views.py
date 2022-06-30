@@ -124,6 +124,7 @@ class KakaoLogInCallbackView(APIView):
 class LoginNaverView(View):
     def get(self, request):
         try:
+            print(3)
             naver_access_token  = request.GET.get('access_token')
             naver_refresh_token = request.GET.get('refresh_token')
             headers             = {'Authorization' : 'Bearer '+ naver_access_token}
@@ -135,7 +136,7 @@ class LoginNaverView(View):
                 return JsonResponse({'message' : user_info_dict['message'], 'ressultcode': user_info_dict['resultcode']}, status=400)
             
             user = User.objects.filter(social_id=user_info['id'])
-            
+            print(4)
             if user.exists():
                 user = User.objects.get(social_id=user_info['id'])
                 
@@ -189,11 +190,13 @@ class LoginNaverCallBackView(View):
         }
         
         token_response = requests.post(token_api_uri, data=data)
+        print(1)
         token_info     = token_response.json()
         access_token   = token_info['access_token']
         refresh_token  = token_info['refresh_token']
         token_type     = token_info['token_type']
         expires_in     = token_info['expires_in']
+        print(2)
         
         return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
      
