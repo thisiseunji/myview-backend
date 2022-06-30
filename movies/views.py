@@ -1,3 +1,5 @@
+import random
+
 from django.http             import JsonResponse
 from django.views            import View
 from django.db.models        import Avg
@@ -8,7 +10,6 @@ from django.db               import transaction
 
 from .models                import *
 from reviews.models         import Review
-from .serializers           import MovieSerializer
 from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
 
@@ -77,29 +78,38 @@ class ActorDetailView(APIView):
     def get(self, request, actor_id):
         try:
             actor      = Actor.objects.get(id=actor_id)
-            movie_list = MovieActor.objects.filter(actor_id=actor_id)
+            movie_actor_list = MovieActor.objects.filter(actor_id=actor_id)
             job_list   = ActorJob.objects.filter(actor_id=actor_id)
+            movie_list = Movie.objects.filter().order_by('-release_date')
+            list = []
+
+            for movie in movie_list:
+                [list.append(movie_actor.movie_id) for movie_actor in MovieActor.objects.filter(actor_id=actor_id, movie_id=movie.id)]
+            
+            image_list = [movie_image.image.image_url for movie_image in MovieImage.objects.filter(movie_id=list[0])]
             
             actor_data = {
-                'id'            : actor.id,
-                'name'          : actor.name,
-                'image_url'     : AWS_S3_URL+actor.image.image_url,
-                'country'       : actor.country.name,
-                'birth'         : actor.birth,
-                'debut'         : actor.debut,
-                'debut_year'    : actor.debut_year,
-                'height'        : actor.height,
-                'weight'        : actor.weight,
-                'job'           : [job.job.name for job in job_list],
-                'starring_list' : [{
-                    'title'               : movie.movie.title,
-                    'release'             : datetime.strftime(movie.movie.release_date, '%Y'),
-                    'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.movie.id).image.image_url,
-                    'role_name'           : movie.role.name,
-                    'ratings'             : str(float(Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
-                    'platform'            : MoviePlatform.objects.get(movie_id=movie.movie.id).platform.name,
-                    'platform_logo_image' : AWS_S3_URL+MoviePlatform.objects.get(movie_id=movie.movie.id).platform.image_url,
-                    } for movie in movie_list]
+                'id'               : actor.id,
+                'name'             : actor.name,
+                'image_url'        : AWS_S3_URL+actor.image.image_url,
+                'country'          : actor.country.name,
+                'birth'            : datetime.strftime(actor.birth, '%Y년 %m월 %d일'),
+                'debut'            : actor.debut,
+                'debut_year'       : '' if actor.debut_year==0 else str(actor.debut_year)+'년',
+                'height'           : '' if actor.height==0 else str(actor.height)+'cm ',
+                'weight'           : '' if actor.weight==0 else str(actor.weight)+'kg',
+                'job'              : [job.job.name for job in job_list],
+                'background_image' : AWS_S3_URL+random.choice(image_list),
+                'agency'           : '키이스트',
+                'starring_list'    : [{
+                    'title'               : movie_actor.movie.title,
+                    'release'             : datetime.strftime(movie_actor.movie.release_date, '%Y'),
+                    'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_actor.movie.id).image.image_url,
+                    'role_name'           : movie_actor.role.name,
+                    'ratings'             : str(float(Review.objects.filter(movie_id=movie_actor.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie_actor.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
+                    'platform'            : MoviePlatform.objects.get(movie_id=movie_actor.movie.id).platform.name,
+                    'platform_logo_image' : AWS_S3_URL+MoviePlatform.objects.get(movie_id=movie_actor.movie.id).platform.image_url,
+                    } for movie_actor in movie_actor_list]
             }
             
             return Response({'actor_info': actor_data}, status=200)
