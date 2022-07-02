@@ -102,6 +102,7 @@ class ActorDetailView(APIView):
                 'background_image' : AWS_S3_URL+random.choice(image_list),
                 'agency'           : '키이스트',
                 'starring_list'    : [{
+                    'movie_id'                  :movie_actor.movie.id,
                     'title'               : movie_actor.movie.title,
                     'release'             : datetime.strftime(movie_actor.movie.release_date, '%Y'),
                     'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_actor.movie.id).image.image_url,
