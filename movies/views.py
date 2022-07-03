@@ -100,9 +100,9 @@ class ActorDetailView(APIView):
                 'weight'           : '' if actor.weight==0 else str(actor.weight)+'kg',
                 'job'              : [job.job.name for job in job_list],
                 'background_image' : AWS_S3_URL+random.choice(image_list),
-                'agency'           : '키이스트',
+                'agency'           : actor.agency,
                 'starring_list'    : [{
-                    'movie_id'                  :movie_actor.movie.id,
+                    'movie_id'            :movie_actor.movie.id,
                     'title'               : movie_actor.movie.title,
                     'release'             : datetime.strftime(movie_actor.movie.release_date, '%Y'),
                     'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_actor.movie.id).image.image_url,
