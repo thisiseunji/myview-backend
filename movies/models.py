@@ -67,6 +67,7 @@ class Actor(models.Model):
     debut_year = models.IntegerField(blank=True, null=True)
     height     = models.IntegerField(blank=True, null=True)
     weight     = models.IntegerField(blank=True, null=True)
+    agency     = models.CharField(max_length=50, blank=True)
     country    = models.ForeignKey('Country', on_delete=models.CASCADE)
     image      = models.ForeignKey('Image', on_delete=models.CASCADE)
     
