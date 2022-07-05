@@ -10,6 +10,7 @@ from django.db               import transaction
 
 from .models                import *
 from reviews.models         import Review
+from users.models           import ProfileImage
 from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
 
@@ -51,7 +52,21 @@ class MovieDetailView(APIView):
         except Movie.DoesNotExist:
             return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
 
-
+class MovieReviewView(View):
+    def get(self, request, movie_id):
+        reviews = Review.objects.filter(movie_id=movie_id).order_by('-created_at', 'title', 'id')
+        reviews = [
+            {
+                'review_id' : review.id,
+                'name'      : review.user.nickname,
+                'profile'   : AWS_S3_URL+ProfileImage.objects.get(user_id=review.user.id).image.image_url,
+                'title'     : review.title,
+                'content'   : review.content,
+                'rating'    : review.rating,
+            } for review in reviews]
+        
+        return JsonResponse({'message':'SUCCESS', 'result':reviews}, status=200)
+    
 class SimpleSearchView(View):
     def get(self, request):
         movies = Movie.objects.all()
