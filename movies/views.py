@@ -9,9 +9,11 @@ from datetime                import datetime
 from django.db               import transaction
 
 from .models                import *
+from users.models           import User
 from reviews.models         import Review
 from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
+from core.utils             import login_decorator
 
 class MovieDetailView(APIView):
     def get(self, request, movie_id):
@@ -199,3 +201,23 @@ class ActorListView(APIView):
         } for actor in actors]
         
         return Response({'actor_list': actor_list}, status=200)
+    
+
+class ActorIntimacyView(APIView):
+    @login_decorator
+    def get(self, request, actor_id):
+        user = request.user
+        
+        total_count  = MovieActor.objects.filter(actor_id=actor_id).count()
+        viewed_count = len([MovieActor.objects.filter(movie_id=review.movie_id, actor_id=actor_id)
+                       for review in Review.objects.filter(user_id=user.id)])
+
+        if total_count==0:
+            return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
+        
+        intimacy_info = {
+            'total_count'  : total_count,
+            'viewed_count' : viewed_count,
+        }
+        
+        return Response({'intimacy_info': intimacy_info}, status=200)
