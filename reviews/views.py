@@ -57,7 +57,9 @@ class ReviewView(APIView):
     @transaction.atomic(using='default')
     def post(self, request):
         try:
-            data   = request.data['data']
+            data   = request.data
+            print(data)
+            
             if Review.objects.filter(user=request.user, movie_id=data['movie_id']).exists():
                 return JsonResponse({'message' : 'REVIEW_ALREADY_EXSISTS'}, status=403)
             
@@ -73,11 +75,13 @@ class ReviewView(APIView):
             )
             
             place = data.get('place', None)
-            
-            if place != None:
-                place = Place.objects.create(
-                    mapx = place['mapx', 0],
-                    mapy = place['mapy', 0],
+            print(place)
+            print(type(place))
+            print(dict(place))
+            if place not in [None, '']:
+                Place.objects.create(
+                    mapx = place['mapx'],
+                    mapy = place['mapy'],
                     name = place['name'],
                     link = place['link']
                 )
@@ -86,7 +90,7 @@ class ReviewView(APIView):
             
             review_images = data.getlist('review_images', None)
             
-            if review_images != None :
+            if review_images not in [None, ''] :
                 for review_image in review_images:
                     file_name = file_handler.upload(review_image,'image/review')
                     image     = Image.objects.create(image_url=file_name)
@@ -113,27 +117,38 @@ class ReviewView(APIView):
 
     @login_decorator
     @transaction.atomic(using='default')
-    def patch(self, request):
+    def put(self, request):
         try:
             data   = request.data
             review = Review.objects.get(id=data['review_id'])
-            
+            print(data)
             for key in data.dict().keys():
+                print(key)
                 if key == 'place':
-                    place = Place.objects.get_or_create(
-                        mapx     = data['place']['mapx', 0],
-                        mapy     = data['place']['mapy', 0],
+                    place = data['key']
+                    print(data[key]) 
+                    print(type(data[key]))
+                    print(place['mapx'])
+                    print(place['mapy'])
+                    print(place['name'])
+                    print(place['link'])
+                    place, is_created = Place.objects.get_or_create(
+                        mapx     = place['mapx'],
+                        mapy     = place['mapy'],
                         defaults = {
-                            'name' : data['place']['name'],
-                            'link' : data['place']['link']
+                            'name' : place['name'],
+                            'link' : place['link']
                         }
                     )
                     ReviewPlace.get_or_creat(
                         review = review,
-                        place = place
+                        place  = place
                     )
+                    print(is_created)
                     
                 if key == 'tags':
+                    print(data[key])
+                    print(type(data[key]))
                     for tag_name in data['tags'].split(','):
                         tag = Tag.objects.get_or_create(name=tag_name.strip())
                         ReviewTag.objects.create(
@@ -141,7 +156,9 @@ class ReviewView(APIView):
                             tag    = tag[0]
                         )
                     
-                if key == 'review_images_url':
+                if key == 'review_images_url' and data['review image_url'] not in ['', None]:
+                    print(data[key])
+                    print(type(data[key]))
                     file_handler      = FileHander(s3_client)
                     review_images_url = data['review_images_url']
                     review_images     = [review_image.image for review_image in ReviewImage.objects.filter(review_id=review.id)]
@@ -154,38 +171,55 @@ class ReviewView(APIView):
                             review_image.delete()
 
                 if key == 'review_images':
-
+                    print(data[key])
+                    print(type(data[key]))
+                    file_handler = FileHander(s3_client)
                     for review_image in data['review_images']:
 
                         file_name = file_handler.upload(review_image,'image/review')
+                        print(f'file_name:{file_name}')
                         image     = Image.objects.create(image_url=file_name)
+                        print(f'images:{image}')
 
                         ReviewImage.objects.create(
                             image  = image,
                             review = review,
                         )
                 if key == 'watched_date':
+                    print(data[key])
+                    print(type(data[key]))
+                    print(data['watched_date'].split(' ')[0])
+                    print(type(data['watched_date'].split(' ')[0]))
                     review.watched_date = data['watched_date'].split(' ')[0],
                     review.watched_time = data['watched_date'].split(' ')[1],
                 
                 if key == 'title':
+                    print(data[key])
+                    print(type(data[key]))
                     review.title = data[key]
-                    review.save()
 
-                if key == 'content':                
+                if key == 'content':
+                    print(data[key])
+                    print(type(data[key]))               
                     review.content = data[key]
-                    review.save()
                 
-                if key == 'with_user':                
+                if key == 'with_user':
+                    print(data[key])
+                    print(type(data[key]))                
                     review.with_user = data[key]
-                    review.save()
+                
+                if key == 'rating':
+                    print(data[key])
+                    print(type(data[key]))
+                    review.rating = data[key]
+                
+            review.save()
                
-                return JsonResponse({'message' : 'SUCCESS'}, status=201)
+            return JsonResponse({'message' : 'SUCCESS'}, status=201)
                     
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
-        
-        
+            
     @login_decorator
     def delete(self, request, review_id):
         try:
@@ -202,16 +236,16 @@ class ReviewView(APIView):
             
             review.delete()
 
-            return JsonResponse({'message' : 'NO_CONTENTS'}, status=204)
+            return JsonResponse({'message':'NO_CONTENTS'}, status=204)
         
         except Review.DoesNotExist:
-            return JsonResponse({'message' : 'REVIEW_NOT_EXIST'}, status=400)
+            return JsonResponse({'message':'REVIEW_NOT_EXIST'}, status=400)
 
         except KeyError:
-            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message':'KEY_ERROR'}, status=400)
 
         except ValueError:
-            return JsonResponse({'message' : 'VALUE_ERROR'}, status=400)
+            return JsonResponse({'message':'VALUE_ERROR'}, status=400)
 
 class ReviewListView(View):
     @login_decorator
