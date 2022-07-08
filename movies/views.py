@@ -9,14 +9,16 @@ from datetime                import datetime
 from django.db               import transaction
 
 from .models                import *
+from users.models           import User
 from reviews.models         import Review
 from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
+from core.utils             import login_decorator
 
 class MovieDetailView(APIView):
     def get(self, request, movie_id):
         try:
-            movie = Movie.objects.get(id=movie_id)
+            movie          = Movie.objects.get(id=movie_id)
             review_ratings = Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg']
             
             movie_data = {
@@ -77,10 +79,10 @@ class SimpleSearchView(View):
 class ActorDetailView(APIView):
     def get(self, request, actor_id):
         try:
-            actor      = Actor.objects.get(id=actor_id)
+            actor            = Actor.objects.get(id=actor_id)
             movie_actor_list = MovieActor.objects.filter(actor_id=actor_id)
-            job_list   = ActorJob.objects.filter(actor_id=actor_id)
-            movie_list = Movie.objects.filter().order_by('-release_date')
+            job_list         = ActorJob.objects.filter(actor_id=actor_id)
+            movie_list       = Movie.objects.filter().order_by('-release_date')
             list = []
 
             for movie in movie_list:
@@ -102,10 +104,11 @@ class ActorDetailView(APIView):
                 'background_image' : AWS_S3_URL+random.choice(image_list),
                 'agency'           : actor.agency,
                 'starring_list'    : [{
-                    'movie_id'            :movie_actor.movie.id,
+                    'movie_id'            : movie_actor.movie.id,
                     'title'               : movie_actor.movie.title,
                     'release'             : datetime.strftime(movie_actor.movie.release_date, '%Y'),
                     'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_actor.movie.id).image.image_url,
+                    'movie_image_url'     : AWS_S3_URL+random.choice([movie_image.image.image_url for movie_image in MovieImage.objects.filter(movie_id=movie_actor.movie_id)]) if [movie_image.image.image_url for movie_image in MovieImage.objects.filter(movie_id=movie_actor.movie_id)] else '',
                     'role_name'           : movie_actor.role.name,
                     'ratings'             : str(float(Review.objects.filter(movie_id=movie_actor.movie.id).aggregate(Avg('rating'))['rating__avg'])) if Review.objects.filter(movie_id=movie_actor.movie.id).aggregate(Avg('rating'))['rating__avg'] else "0",
                     'platform'            : MoviePlatform.objects.get(movie_id=movie_actor.movie.id).platform.name,
@@ -199,3 +202,23 @@ class ActorListView(APIView):
         } for actor in actors]
         
         return Response({'actor_list': actor_list}, status=200)
+    
+
+class ActorIntimacyView(APIView):
+    @login_decorator
+    def get(self, request, actor_id):
+        user = request.user
+        
+        total_count  = MovieActor.objects.filter(actor_id=actor_id).count()
+        viewed_count = len([MovieActor.objects.filter(movie_id=review.movie_id, actor_id=actor_id)
+                       for review in Review.objects.filter(user_id=user.id)])
+
+        if total_count==0:
+            return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
+        
+        intimacy_info = {
+            'total_count'  : total_count,
+            'viewed_count' : viewed_count,
+        }
+        
+        return Response({'intimacy_info': intimacy_info}, status=200)
