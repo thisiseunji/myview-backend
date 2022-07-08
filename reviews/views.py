@@ -2,6 +2,7 @@ from random         import randrange
 from django.http    import JsonResponse
 from django.views   import View
 from django.db      import transaction
+from rest_framework.views import APIView
 
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
@@ -10,7 +11,7 @@ from reviews.models import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Revi
 from users.models   import User
 from my_settings    import AWS_S3_URL
 
-class ReviewView(View):
+class ReviewView(APIView):
     @login_decorator
     def get(self, request, review_id):
         try:
@@ -54,66 +55,60 @@ class ReviewView(View):
         
     @login_decorator
     @transaction.atomic(using='default')
-    def post(self, request, movie_id):
+    def post(self, request):
         try:
-            review, created = Review.objects.update_or_create(
+            data   = request.data
+            
+            if Review.objects.filter(user=request.user, movie_id=data['movie_id']).exists():
+                return JsonResponse({'message' : 'REVIEW_ALREADY_EXSISTS'}, status=403)
+            
+            review = Review.objects.create(
                 user         = request.user,
-                movie_id     = movie_id,
-                defaults     = {
-                    'title'        : request.POST.get('title'),
-                    'content'      : request.POST.get('content'),
-                    'rating'       : request.POST.get('rating'),
-                    'watched_date' : request.POST.get('watched_date').split(' ')[0],
-                    'watched_time' : request.POST.get('watched_date').split(' ')[1],
-                    'with_uesr'    : request.POST.get('with_user')
-                }
+                movie_id     = data['movie_id'],
+                title        = data['title'],
+                content      = data['content'],
+                rating       = data['rating'],
+                watched_date = data['watched_date'].split(' ')[0],
+                watched_time = data['watched_date'].split(' ')[1],
+                with_user    = data['with_user']
             )
-            
-            place = request.POST.get('place')
-            
-            if place != None:
-                place, created = Place.objects.get_or_create(
-                    mapx     = place['mapx', 0],
-                    mapy     = place['mapy', 0],
-                    defaults = {
-                        'name' : place['name'],
-                        'link' : place['link']
-                    }
-                )
             
             file_handler = FileHander(s3_client)
             
-            if not created :
-                review_images_url = request.POST.get('review_images_url',[])
-                review_images     = [review_image.image for review_image in ReviewImage.objects.filter(review_id=review.id)]
-                
+            review_images = data.getlist('review_images', None)
+        
+            if review_images:
                 for review_image in review_images:
-                    if AWS_S3_URL+review_image.image_url in review_images_url:
-                        continue
-                    else:
-                        file_handler.delete(review_image.image_url)
-                        review_image.delete()
+                    file_name = file_handler.upload(review_image,'image/review')
+                    image     = Image.objects.create(image_url=file_name)
+                    
+                    ReviewImage.objects.create(
+                        image  = image,
+                        review = review,
+                    )
             
-            review_images = request.FILES.getlist('review_images')
-            
-            for review_image in review_images:
-                
-                file_name = file_handler.upload(review_image,'image/review')
-                image     = Image.objects.create(image_url=file_name)
-                
-                ReviewImage.objects.create(
-                    image  = image,
-                    review = review,
+            place_info = data.getlist('place', None)
+
+            if place_info:
+                place, is_created = Place.objects.update_or_create(
+                    mapx = place_info[0],
+                    mapy = place_info[1],
+                    defaults = {
+                        'name' : place_info[2],
+                        'link' : place_info[3]
+                    }
                 )
                 
-            tags = request.POST.get('tags')
+                ReviewPlace.objects.create(place=place, review=review)
             
-            if tags not in [None, '']:
-                for tag_name in tags.split(','):
-                    tag = Tag.objects.get_or_create(name=tag_name.strip())
+            tags = data.getlist('tags', None)
+            
+            if tags:
+                for tag in tags:
+                    tag, is_created = Tag.objects.get_or_create(name=tag)
                     ReviewTag.objects.create(
                         review = review,
-                        tag    = tag[0]
+                        tag    = tag
                     )
             
             return JsonResponse({'message' : 'SUCCESS'}, status=201)
@@ -121,6 +116,83 @@ class ReviewView(View):
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
+    @login_decorator
+    @transaction.atomic(using='default')
+    def put(self, request):
+        try:
+            data   = request.data
+            review = Review.objects.get(id=data['review_id'])
+            
+            for key in data.dict().keys():
+                
+                if key == 'place':
+                    place_info = data.getlist(key, None)
+
+                    place, is_created = Place.objects.get_or_create(
+                        mapx     = place_info[0],
+                        mapy     = place_info[1],
+                        defaults = {
+                            'name' : place_info[2],
+                            'link' : place_info[3]
+                        }
+                    )
+                    ReviewPlace.objects.get_or_create(
+                        review = review,
+                        place  = place
+                    )
+                    
+                if key == 'tags':
+                    ReviewTag.objects.filter(review=review).delete()
+                    for tag_name in data.getlist(key, None):
+                        tag, is_created = Tag.objects.get_or_create(name=tag_name)
+                        ReviewTag.objects.create(
+                            review = review,
+                            tag    = tag
+                        )
+                
+                if key == 'review_images':
+                    file_handler      = FileHander(s3_client)
+                    review_image_urls = [review_image.image.image_url for review_image in ReviewImage.objects.filter(review_id=review.id)]
+                    for review_image in data.getlist(key):
+                        if type(review_image) != str:
+                            file_name = file_handler.upload(review_image,'image/review')
+                            image     = Image.objects.create(image_url=file_name)
+
+                            ReviewImage.objects.create(
+                                image  = image,
+                                review = review,
+                            )
+                        
+                        elif type(review_image) == str and review_image[len(AWS_S3_URL):] in review_image_urls:
+                            review_image_urls.remove(review_image[len(AWS_S3_URL):])
+                            
+                    for review_image in review_image_urls:
+                        file_handler.delete(review_image)
+                        Image.objects.get(image_url=review_image).delete()
+                
+                if key == 'watched_date':
+                    review.watched_date = data[key].split(' ')[0]
+                    review.watched_time = data[key].split(' ')[1]
+                    
+                if key == 'title':
+                    review.title = data[key]
+
+                if key == 'content':
+                    review.content = data[key]
+                
+                if key == 'with_user':
+                    review.with_user = data[key]
+                
+                if key == 'rating':
+                    review.rating = data[key]
+            
+            review.save()
+               
+            return JsonResponse({'message' : 'SUCCESS'}, status=201)
+                    
+        except KeyError:
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
+            
     @login_decorator
     def delete(self, request, review_id):
         try:
@@ -137,16 +209,16 @@ class ReviewView(View):
             
             review.delete()
 
-            return JsonResponse({'message' : 'NO_CONTENTS'}, status=204)
+            return JsonResponse({'message':'NO_CONTENTS'}, status=204)
         
         except Review.DoesNotExist:
-            return JsonResponse({'message' : 'REVIEW_NOT_EXIST'}, status=400)
+            return JsonResponse({'message':'REVIEW_NOT_EXIST'}, status=400)
 
         except KeyError:
-            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message':'KEY_ERROR'}, status=400)
 
         except ValueError:
-            return JsonResponse({'message' : 'VALUE_ERROR'}, status=400)
+            return JsonResponse({'message':'VALUE_ERROR'}, status=400)
 
 class ReviewListView(View):
     @login_decorator
