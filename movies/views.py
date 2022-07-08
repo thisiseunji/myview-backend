@@ -7,10 +7,12 @@ from rest_framework.views    import APIView
 from rest_framework.response import Response
 from datetime                import datetime
 from django.db               import transaction
+from django.db.models        import Q
 
 from .models                import *
 from users.models           import User
 from reviews.models         import Review
+from users.models           import ProfileImage
 from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
@@ -53,7 +55,21 @@ class MovieDetailView(APIView):
         except Movie.DoesNotExist:
             return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
 
-
+class MovieReviewView(View):
+    def get(self, request, movie_id):
+        reviews = Review.objects.filter(movie_id=movie_id).order_by('-created_at', 'title', 'id')
+        reviews = [
+            {
+                'review_id' : review.id,
+                'name'      : review.user.nickname,
+                'profile'   : AWS_S3_URL+ProfileImage.objects.get(user_id=review.user.id).image.image_url,
+                'title'     : review.title,
+                'content'   : review.content,
+                'rating'    : review.rating,
+            } for review in reviews]
+        
+        return JsonResponse({'message':'SUCCESS', 'result':reviews}, status=200)
+    
 class SimpleSearchView(View):
     def get(self, request):
         movies = Movie.objects.all()
@@ -75,7 +91,35 @@ class SimpleSearchView(View):
         
         return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
     
-    
+class MovieSearchView(View):
+    def get(self, request):
+        try:
+            q = request.GET.get('q')
+            
+            query = Q()
+            query |= Q(title__icontains=q)
+            query |= Q(en_title__icontains=q)
+            #쿼리를 통해 정참조하고있는 다른 테이블의 데이터를 검증하는 조건을 더할 것 - country
+            
+            movie_list = Movie.objects.filter(query).distinct()
+            
+            result = [
+                {
+                    'movie_id'     : movie.id,
+                    'title'        : movie.title,
+                    'en_title'     : movie.en_title,
+                    'running_time' : movie.running_time,
+                    'release_date' : movie.release_date,
+                    'country'      : movie.country.name,
+                    'poster'       : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.id).image.image_url
+                } for movie in movie_list]
+            
+            return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
+        
+        except Movie.DoesNotExist:
+            
+            return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
+  
 class ActorDetailView(APIView):
     def get(self, request, actor_id):
         try:
@@ -188,8 +232,7 @@ class ActorDetailView(APIView):
             actor.save()
             
         return Response({'message': 'ACTOR_UPDATE_SUCCESS'}, status=201)
-        
-        
+               
 class ActorListView(APIView):
     def get(self, request):
         actors = Actor.objects.all().order_by('name')

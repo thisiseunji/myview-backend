@@ -195,7 +195,9 @@ class LoginNaverCallBackView(View):
         token_type     = token_info['token_type']
         expires_in     = token_info['expires_in']
         
-        return redirect(f'http://localhost:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+        host = 'http://c95d-110-11-194-32.ngrok.io'
+        
+        return redirect(f'{host}/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
      
 class UserInformationView(View):
     @login_decorator
