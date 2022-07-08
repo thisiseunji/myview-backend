@@ -58,7 +58,6 @@ class ReviewView(APIView):
     def post(self, request):
         try:
             data   = request.data
-            print(data)
             
             if Review.objects.filter(user=request.user, movie_id=data['movie_id']).exists():
                 return JsonResponse({'message' : 'REVIEW_ALREADY_EXSISTS'}, status=403)
@@ -74,23 +73,11 @@ class ReviewView(APIView):
                 with_user    = data['with_user']
             )
             
-            place = data.get('place', None)
-            print(place)
-            print(type(place))
-            print(dict(place))
-            if place not in [None, '']:
-                Place.objects.create(
-                    mapx = place['mapx'],
-                    mapy = place['mapy'],
-                    name = place['name'],
-                    link = place['link']
-                )
-            
             file_handler = FileHander(s3_client)
             
             review_images = data.getlist('review_images', None)
-            
-            if review_images not in [None, ''] :
+        
+            if review_images:
                 for review_image in review_images:
                     file_name = file_handler.upload(review_image,'image/review')
                     image     = Image.objects.create(image_url=file_name)
@@ -99,15 +86,30 @@ class ReviewView(APIView):
                         image  = image,
                         review = review,
                     )
-                
-            tags = data.getlist('tags', None)
             
-            if tags not in [None, '']:
-                for tag_name in tags.split(','):
-                    tag = Tag.objects.get_or_create(name=tag_name.strip())
+            place_info = data.getlist('place', None)
+
+            if place_info:
+                place, is_created = Place.objects.update_or_create(
+                    mapx = place_info[0],
+                    mapy = place_info[1],
+                    defaults = {
+                        'name' : place_info[2],
+                        'link' : place_info[3]
+                    }
+                )
+                
+                ReviewPlace.objects.create(place=place, review=review)
+            
+            tags = data.getlist('tags', None)
+            print(tags)
+            
+            if tags:
+                for tag in tags:
+                    tag, is_created = Tag.objects.get_or_create(name=tag)
                     ReviewTag.objects.create(
                         review = review,
-                        tag    = tag[0]
+                        tag    = tag
                     )
             
             return JsonResponse({'message' : 'SUCCESS'}, status=201)

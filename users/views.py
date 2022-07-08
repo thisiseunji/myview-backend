@@ -190,17 +190,15 @@ class LoginNaverCallBackView(View):
         }
         
         token_response = requests.post(token_api_uri, data=data)
-        print(1)
         token_info     = token_response.json()
         access_token   = token_info['access_token']
         refresh_token  = token_info['refresh_token']
         token_type     = token_info['token_type']
         expires_in     = token_info['expires_in']
-        print(2)
         
-        host = 'http://c95d-110-11-194-32.ngrok.io'
+        # host = 'http://c95d-110-11-194-32.ngrok.io'
         
-        return redirect(f'{host}/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+        return redirect(f'http://127.0.0.1:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
      
 class UserInformationView(View):
     @login_decorator
