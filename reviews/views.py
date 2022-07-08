@@ -102,7 +102,6 @@ class ReviewView(APIView):
                 ReviewPlace.objects.create(place=place, review=review)
             
             tags = data.getlist('tags', None)
-            print(tags)
             
             if tags:
                 for tag in tags:
@@ -123,98 +122,70 @@ class ReviewView(APIView):
         try:
             data   = request.data
             review = Review.objects.get(id=data['review_id'])
-            print(data)
+            
             for key in data.dict().keys():
-                print(key)
+                
                 if key == 'place':
-                    place = data['key']
-                    print(data[key]) 
-                    print(type(data[key]))
-                    print(place['mapx'])
-                    print(place['mapy'])
-                    print(place['name'])
-                    print(place['link'])
+                    place_info = data.getlist(key, None)
+
                     place, is_created = Place.objects.get_or_create(
-                        mapx     = place['mapx'],
-                        mapy     = place['mapy'],
+                        mapx     = place_info[0],
+                        mapy     = place_info[1],
                         defaults = {
-                            'name' : place['name'],
-                            'link' : place['link']
+                            'name' : place_info[2],
+                            'link' : place_info[3]
                         }
                     )
-                    ReviewPlace.get_or_creat(
+                    ReviewPlace.objects.get_or_create(
                         review = review,
                         place  = place
                     )
-                    print(is_created)
                     
                 if key == 'tags':
-                    print(data[key])
-                    print(type(data[key]))
-                    for tag_name in data['tags'].split(','):
-                        tag = Tag.objects.get_or_create(name=tag_name.strip())
+                    ReviewTag.objects.filter(review=review).delete()
+                    for tag_name in data.getlist(key, None):
+                        tag, is_created = Tag.objects.get_or_create(name=tag_name)
                         ReviewTag.objects.create(
                             review = review,
-                            tag    = tag[0]
+                            tag    = tag
                         )
-                    
-                if key == 'review_images_url' and data['review image_url'] not in ['', None]:
-                    print(data[key])
-                    print(type(data[key]))
-                    file_handler      = FileHander(s3_client)
-                    review_images_url = data['review_images_url']
-                    review_images     = [review_image.image for review_image in ReviewImage.objects.filter(review_id=review.id)]
-
-                    for review_image in review_images:
-                        if AWS_S3_URL+review_image.image_url in review_images_url:
-                            continue
-                        else:
-                            file_handler.delete(review_image.image_url)
-                            review_image.delete()
-
-                if key == 'review_images':
-                    print(data[key])
-                    print(type(data[key]))
-                    file_handler = FileHander(s3_client)
-                    for review_image in data['review_images']:
-
-                        file_name = file_handler.upload(review_image,'image/review')
-                        print(f'file_name:{file_name}')
-                        image     = Image.objects.create(image_url=file_name)
-                        print(f'images:{image}')
-
-                        ReviewImage.objects.create(
-                            image  = image,
-                            review = review,
-                        )
-                if key == 'watched_date':
-                    print(data[key])
-                    print(type(data[key]))
-                    print(data['watched_date'].split(' ')[0])
-                    print(type(data['watched_date'].split(' ')[0]))
-                    review.watched_date = data['watched_date'].split(' ')[0],
-                    review.watched_time = data['watched_date'].split(' ')[1],
                 
+                if key == 'review_images':
+                    file_handler      = FileHander(s3_client)
+                    review_image_urls = [review_image.image.image_url for review_image in ReviewImage.objects.filter(review_id=review.id)]
+                    for review_image in data.getlist(key):
+                        if type(review_image) != str:
+                            file_name = file_handler.upload(review_image,'image/review')
+                            image     = Image.objects.create(image_url=file_name)
+
+                            ReviewImage.objects.create(
+                                image  = image,
+                                review = review,
+                            )
+                        
+                        elif type(review_image) == str and review_image[len(AWS_S3_URL):] in review_image_urls:
+                            review_image_urls.remove(review_image[len(AWS_S3_URL):])
+                            
+                    for review_image in review_image_urls:
+                        file_handler.delete(review_image)
+                        Image.objects.get(image_url=review_image).delete()
+                
+                if key == 'watched_date':
+                    review.watched_date = data[key].split(' ')[0]
+                    review.watched_time = data[key].split(' ')[1]
+                    
                 if key == 'title':
-                    print(data[key])
-                    print(type(data[key]))
                     review.title = data[key]
 
                 if key == 'content':
-                    print(data[key])
-                    print(type(data[key]))               
                     review.content = data[key]
                 
                 if key == 'with_user':
-                    print(data[key])
-                    print(type(data[key]))                
                     review.with_user = data[key]
                 
                 if key == 'rating':
-                    print(data[key])
-                    print(type(data[key]))
                     review.rating = data[key]
-                
+            
             review.save()
                
             return JsonResponse({'message' : 'SUCCESS'}, status=201)
