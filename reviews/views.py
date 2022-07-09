@@ -13,10 +13,10 @@ from my_settings    import AWS_S3_URL
 
 class ReviewView(APIView):
     @login_decorator
-    def get(self, request, review_id):
+    def get(self, request, movie_id):
         try:
             user   = request.user
-            review = Review.objects.get(id=review_id)
+            review = Review.objects.get(user=user, movie_id=movie_id)
             result = { 
                 'review_id'     : review.id,
                 'title'         : review.title,
@@ -27,15 +27,15 @@ class ReviewView(APIView):
                 'review_images' : [AWS_S3_URL+review_image.image.image_url for review_image in ReviewImage.objects.filter(review=review)],
                 #값이 없을 경우 리턴 값 설정
                 'place'         : {
-                        'name' : ReviewPlace.objects.get(review_id=review_id).place.name,
-                        'mapx' : ReviewPlace.objects.get(review_id=review_id).place.mapx,
-                        'mapy' : ReviewPlace.objects.get(review_id=review_id).place.mapy,
-                        'link' : ReviewPlace.objects.get(review_id=review_id).place.link   
-                } if ReviewPlace.objects.filter(review_id=review_id).exists() else [],
+                        'name' : ReviewPlace.objects.get(review=review).place.name,
+                        'mapx' : ReviewPlace.objects.get(review=review).place.mapx,
+                        'mapy' : ReviewPlace.objects.get(review=review).place.mapy,
+                        'link' : ReviewPlace.objects.get(review=review).place.link   
+                } if ReviewPlace.objects.filter(review_id=review).exists() else [],
                 'tags'          : [
                     {
                         'tag'   : review_tag.tag.name, 
-                        'color' : ColorCode.objects.get(id=randrange(0,4))
+                        'color' : ColorCode.objects.get(id=randrange(0,4)).color_code
                     } for review_tag in ReviewTag.objects.filter(review=review)],
                 'movie'         : {
                     'id'       : review.movie.id,
@@ -47,6 +47,9 @@ class ReviewView(APIView):
         
             return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
 
+        except Review.DoesNotExist:
+            return JsonResponse({'message' : 'REVIEW_DOSE_NOT_EXISTS'}, status=400)
+        
         except KeyError:
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
         
@@ -57,7 +60,7 @@ class ReviewView(APIView):
     @transaction.atomic(using='default')
     def post(self, request):
         try:
-            data   = request.data
+            data = request.data
             
             if Review.objects.filter(user=request.user, movie_id=data['movie_id']).exists():
                 return JsonResponse({'message' : 'REVIEW_ALREADY_EXSISTS'}, status=403)

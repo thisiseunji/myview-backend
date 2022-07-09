@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
 from movies.models     import Image
+from reviews.models    import Review
 from core.utils        import login_decorator
 from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
@@ -124,7 +125,6 @@ class KakaoLogInCallbackView(APIView):
 class LoginNaverView(View):
     def get(self, request):
         try:
-            print(3)
             naver_access_token  = request.GET.get('access_token')
             naver_refresh_token = request.GET.get('refresh_token')
             headers             = {'Authorization' : 'Bearer '+ naver_access_token}
@@ -136,7 +136,7 @@ class LoginNaverView(View):
                 return JsonResponse({'message' : user_info_dict['message'], 'ressultcode': user_info_dict['resultcode']}, status=400)
             
             user = User.objects.filter(social_id=user_info['id'])
-            print(4)
+
             if user.exists():
                 user = User.objects.get(social_id=user_info['id'])
                 
@@ -196,9 +196,9 @@ class LoginNaverCallBackView(View):
         token_type     = token_info['token_type']
         expires_in     = token_info['expires_in']
         
-        # host = 'http://c95d-110-11-194-32.ngrok.io'
+        host = 'http://c340-221-147-33-186.ngrok.io/'
         
-        return redirect(f'http://127.0.0.1:8000/users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+        return redirect(f'{host}users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
      
 class UserInformationView(View):
     @login_decorator
@@ -258,3 +258,22 @@ class DeleteAccountView(APIView):
         
         except User.DoesNotExist:
             return Response({'message': 'USER_NOT_EXIST'}, status=400)
+        
+
+class UserListView(APIView):
+    def get(self, request):
+        users = User.objects.all()
+        
+        user_data = [{
+            'id'              : user.id,
+            'social_platform' : user.social_platform.name,
+            'social_id'       : user.social_id,
+            'nickname'        : user.nickname,
+            'email'           : user.email,
+            'phone_number'    : user.phone_number,
+            'group'           : user.group.name,
+            'is_valid'        : user.is_valid,
+            'review_count'    : len(Review.objects.filter(user_id=user.id)),
+            } for user in users]
+        
+        return Response({'data': user_data}, status=200)
