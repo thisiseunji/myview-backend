@@ -1,5 +1,5 @@
 from django.urls import path
-from users.views import KakaoLogIn, DeleteAccountView, KakaoLogInCallbackView, UserInformationView, UserProfileUpdateView
+from users.views import KakaoLogIn, DeleteAccountView, KakaoLogInCallbackView, UserInformationView, UserProfileUpdateView, UserListView
 from users.views import LoginNaverCallBackView, LoginNaverView 
 
 urlpatterns = [
@@ -19,4 +19,7 @@ urlpatterns = [
     
     #user_delete
     path('/delete', DeleteAccountView.as_view()),
+    
+    #user_list
+    path('/list', UserListView.as_view()),
 ]
