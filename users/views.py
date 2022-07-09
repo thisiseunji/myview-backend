@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
 from movies.models     import Image
+from reviews.models    import Review
 from core.utils        import login_decorator
 from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
@@ -257,3 +258,22 @@ class DeleteAccountView(APIView):
         
         except User.DoesNotExist:
             return Response({'message': 'USER_NOT_EXIST'}, status=400)
+        
+
+class UserListView(APIView):
+    def get(self, request):
+        users = User.objects.all()
+        
+        user_data = [{
+            'id'              : user.id,
+            'social_platform' : user.social_platform.name,
+            'social_id'       : user.social_id,
+            'nickname'        : user.nickname,
+            'email'           : user.email,
+            'phone_number'    : user.phone_number,
+            'group'           : user.group.name,
+            'is_valid'        : user.is_valid,
+            'review_count'    : len(Review.objects.filter(user_id=user.id)),
+            } for user in users]
+        
+        return Response({'data': user_data}, status=200)
