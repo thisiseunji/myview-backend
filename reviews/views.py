@@ -252,3 +252,27 @@ class ReviewListView(View):
             
         except ValueError:
             return JsonResponse({'message' : 'VALUE_ERROR'}, status=400)
+
+class ReviewTopThreeView(View):
+    @login_decorator
+    def get(self, request):
+        reviews = Review.objects.filter(user=request.user).order_by('rating', '-updated_at')
+        if len(reviews) >= 3 :
+                result = [{
+                    'review_id' : reviews[i].id,
+                    'title'     : reviews[i].title,
+                    'rating'    : reviews[i].rating,
+                    'movie'     : {
+                        'id'     : reviews[i].movie_id,
+                        'poster' : ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
+                        'title'  : reviews[i].movie.title,
+                        }
+                } for i in range(3)]
+
+                return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
+        
+        elif len(reviews) == 0 :
+            
+                return JsonResponse({'message' : 'NO_REVIEW'}, status=200)
+        
+        else: return JsonResponse({'message' : 'REVIEWS_NOT_ENOUGH'}, status=200)
