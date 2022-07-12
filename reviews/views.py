@@ -235,7 +235,7 @@ class ReviewListView(View):
                 'rating'    : review.rating,
                 'movie'     : {
                     'id'       : review.movie.id,
-                    'poster'   : ThumbnailImage.objects.get(movie=review.movie).image.image_url,
+                    'poster'   : AWS_S3_URL+ThumbnailImage.objects.get(movie=review.movie).image.image_url,
                     'title'    : review.movie.title,
                     'en_title' : review.movie.en_title,
                     'released' : review.movie.release_date,
