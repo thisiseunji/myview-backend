@@ -1,6 +1,7 @@
 from django.urls  import path
 
-from movies.views import MovieDetailView, MovieReviewView, SimpleSearchView, MovieSearchView, ActorDetailView, ActorListView, ActorIntimacyView
+from movies.views import MovieDetailView, MovieReviewView, SimpleSearchView, MovieSearchView, ActorDetailView,\
+                         ActorListView, ActorIntimacyView, MovieListView
 
 urlpatterns = [
     # 영화 상세페이지
@@ -24,4 +25,7 @@ urlpatterns = [
     
     # 영화배우 친밀도
     path('/actor/intimacy/<int:actor_id>', ActorIntimacyView.as_view()),
+    
+    # [관리자] 전체 영화데이터 리스트
+    path('/all', MovieListView.as_view()),
 ]

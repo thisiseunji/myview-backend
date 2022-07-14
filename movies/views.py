@@ -265,3 +265,21 @@ class ActorIntimacyView(APIView):
         }
         
         return Response({'intimacy_info': intimacy_info}, status=200)
+    
+    
+class MovieListView(APIView):
+    def get(self, request):
+        movies = Movie.objects.all()
+        
+        data = [{
+            'title'        : movie.title,    
+            'en_title'     : movie.en_title,    
+            'running_time' : movie.running_time,    
+            'ratings'      : '미구현',
+            'country'      : movie.country.name,    
+            'genre'        : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie.id)],    
+            'release_date' : movie.release_date,    
+            'category'     : movie.category.name,        
+        } for movie in movies]
+        
+        return Response({'message': data}, status=200)
