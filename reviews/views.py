@@ -256,7 +256,7 @@ class ReviewListView(View):
 class ReviewTopThreeView(View):
     @login_decorator
     def get(self, request):
-        reviews = Review.objects.filter(user=request.user).order_by('rating', '-updated_at')
+        reviews = Review.objects.filter(user=request.user).order_by('-rating', '-updated_at')
         if len(reviews) >= 3 :
                 result = [{
                     'review_id' : reviews[i].id,
