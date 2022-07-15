@@ -272,14 +272,16 @@ class MovieListView(APIView):
         movies = Movie.objects.all()
         
         data = [{
-            'title'        : movie.title,    
-            'en_title'     : movie.en_title,    
-            'running_time' : movie.running_time,    
-            'ratings'      : '미구현',
-            'country'      : movie.country.name,    
-            'genre'        : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie.id)],    
-            'release_date' : movie.release_date,    
-            'category'     : movie.category.name,        
+            'id'                  : movie.id,
+            'title'               : movie.title,    
+            'en_title'            : movie.en_title,    
+            'running_time'        : movie.running_time,    
+            'ratings'             : '미구현',
+            'country'             : movie.country.name,    
+            'genre'               : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie.id)],    
+            'release_date'        : movie.release_date,    
+            'category'            : movie.category.name,
+            'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.id).image.image_url,        
         } for movie in movies]
         
         return Response({'message': data}, status=200)
