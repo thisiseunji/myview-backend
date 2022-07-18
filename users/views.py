@@ -10,7 +10,7 @@ from users.models      import User, SocialPlatform, Group, ProfileImage, SocialT
 from movies.models     import Image
 from reviews.models    import Review
 from core.utils        import login_decorator
-from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
 #* 카카오 신규유저 테스트
@@ -265,15 +265,16 @@ class UserListView(APIView):
         users = User.objects.all()
         
         user_data = [{
-            'id'              : user.id,
-            'social_platform' : user.social_platform.name,
-            'social_id'       : user.social_id,
-            'nickname'        : user.nickname,
-            'email'           : user.email,
-            'phone_number'    : user.phone_number,
-            'group'           : user.group.name,
-            'is_valid'        : user.is_valid,
-            'review_count'    : len(Review.objects.filter(user_id=user.id)),
+            'id'                : user.id,
+            'social_platform'   : user.social_platform.name,
+            'social_id'         : user.social_id,
+            'nickname'          : user.nickname,
+            'email'             : user.email,
+            'phone_number'      : user.phone_number,
+            'group'             : user.group.name,
+            'is_valid'          : user.is_valid,
+            'review_count'      : len(Review.objects.filter(user_id=user.id)),
+            'profile_image_url' : AWS_S3_URL+ProfileImage.objects.get(user_id=user.id).image.image_url,
             } for user in users]
         
         return Response({'data': user_data}, status=200)
