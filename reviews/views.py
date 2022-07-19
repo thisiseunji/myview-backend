@@ -242,6 +242,7 @@ class ReviewListView(View):
                     'country'  : review.movie.country.name,
                     'genre'    : [movie.genre.name for movie in MovieGenre.objects.filter(movie=review.movie)],
                     'age'      : review.movie.age,
+                    'running_time' : review.movie.running_time
                 }
             } for review in reviews]
             
