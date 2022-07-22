@@ -54,6 +54,7 @@ class KakaoLogInCallbackView(APIView):
             nickname          = kakao_response['kakao_account']['profile']['nickname']
             profile_image_url = kakao_response['kakao_account']['profile']['profile_image_url']
             email             = kakao_response['kakao_account']['email']
+            #! 카카로그인 안될시 이메일 동의여부 체크
             
             SocialToken.objects.update_or_create(
                     refresh_token = social_refresh_token,
@@ -64,6 +65,11 @@ class KakaoLogInCallbackView(APIView):
                         'expires_in'    : expires_in,
                     }
                 )
+            
+            social_id = SocialPlatform.objects.get(id=2).id
+            if len(User.objects.filter(email=email, social_id=2))>1:
+                return Response({'message': 'ERROR'}, status=400)
+            
             
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
@@ -196,7 +202,7 @@ class LoginNaverCallBackView(View):
         token_type     = token_info['token_type']
         expires_in     = token_info['expires_in']
         
-        host = 'https://be08-175-193-80-187.ngrok.io/'
+        host = 'https://ab0d-175-193-80-187.ngrok.io/'
         
         return redirect(f'{host}users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
      
