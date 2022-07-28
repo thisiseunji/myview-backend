@@ -17,7 +17,7 @@ class SocialPlatform(models.Model):
 class User(TimeStampedModel):
     social_id       = models.CharField(max_length=200, unique=True)
     nickname        = models.CharField(max_length=50, null=True)
-    email           = models.EmailField(max_length=100, unique=True, null=True)
+    email           = models.EmailField(max_length=100, null=True)
     password        = models.CharField(max_length=200, null=True)
     phone_number    = models.CharField(max_length=50, null=True)
     group           = models.ForeignKey('Group', on_delete=models.CASCADE)

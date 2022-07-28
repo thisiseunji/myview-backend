@@ -10,7 +10,7 @@ from users.models      import User, SocialPlatform, Group, ProfileImage, SocialT
 from movies.models     import Image
 from reviews.models    import Review
 from core.utils        import login_decorator
-from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
 #* 카카오 신규유저 테스트
@@ -54,6 +54,7 @@ class KakaoLogInCallbackView(APIView):
             nickname          = kakao_response['kakao_account']['profile']['nickname']
             profile_image_url = kakao_response['kakao_account']['profile']['profile_image_url']
             email             = kakao_response['kakao_account']['email']
+            #! 카카로그인 안될시 이메일 동의여부 체크
             
             SocialToken.objects.update_or_create(
                     refresh_token = social_refresh_token,
@@ -64,6 +65,11 @@ class KakaoLogInCallbackView(APIView):
                         'expires_in'    : expires_in,
                     }
                 )
+            
+            social_id = SocialPlatform.objects.get(id=2).id
+            if len(User.objects.filter(email=email, social_id=2))>1:
+                return Response({'message': 'ERROR'}, status=400)
+            
             
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
@@ -265,15 +271,16 @@ class UserListView(APIView):
         users = User.objects.all()
         
         user_data = [{
-            'id'              : user.id,
-            'social_platform' : user.social_platform.name,
-            'social_id'       : user.social_id,
-            'nickname'        : user.nickname,
-            'email'           : user.email,
-            'phone_number'    : user.phone_number,
-            'group'           : user.group.name,
-            'is_valid'        : user.is_valid,
-            'review_count'    : len(Review.objects.filter(user_id=user.id)),
+            'id'                : user.id,
+            'social_platform'   : user.social_platform.name,
+            'social_id'         : user.social_id,
+            'nickname'          : user.nickname,
+            'email'             : user.email,
+            'phone_number'      : user.phone_number,
+            'group'             : user.group.name,
+            'is_valid'          : user.is_valid,
+            'review_count'      : len(Review.objects.filter(user_id=user.id)),
+            'profile_image_url' : AWS_S3_URL+ProfileImage.objects.get(user_id=user.id).image.image_url,
             } for user in users]
         
         return Response({'data': user_data}, status=200)
