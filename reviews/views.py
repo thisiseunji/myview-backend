@@ -264,7 +264,7 @@ class ReviewTopThreeView(View):
                     'rating'    : reviews[i].rating,
                     'movie'     : {
                         'id'     : reviews[i].movie_id,
-                        'poster' : ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
+                        'poster' : AWS_S3_URL+ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
                         'title'  : reviews[i].movie.title,
                         }
                 } for i in range(3)]
