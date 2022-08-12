@@ -130,8 +130,8 @@ class ReviewView(APIView):
                 
                 if key == 'place':
                     place_info = data.getlist(key, None)
-
-                    place, is_created = Place.objects.get_or_create(
+                
+                    place, is_created = Place.objects.update_or_create(
                         mapx     = place_info[0],
                         mapy     = place_info[1],
                         defaults = {
@@ -139,7 +139,7 @@ class ReviewView(APIView):
                             'link' : place_info[3]
                         }
                     )
-                    ReviewPlace.objects.get_or_create(
+                    ReviewPlace.objects.update_or_create(
                         review = review,
                         place  = place
                     )
@@ -242,6 +242,7 @@ class ReviewListView(View):
                     'country'  : review.movie.country.name,
                     'genre'    : [movie.genre.name for movie in MovieGenre.objects.filter(movie=review.movie)],
                     'age'      : review.movie.age,
+                    'running_time' : review.movie.running_time
                 }
             } for review in reviews]
             
@@ -256,9 +257,13 @@ class ReviewListView(View):
 class ReviewTopThreeView(View):
     @login_decorator
     def get(self, request):
-        reviews = Review.objects.filter(user=request.user).order_by('-rating', '-updated_at')
-        if len(reviews) >= 3 :
-                result = [{
+        reviews = Review.objects.filter(user=request.user).order_by('-rating', '-updated_at')[:3]
+        
+        if len(reviews) == 0 :
+            return JsonResponse({'message' : 'NO_REVIEW'}, status=200)
+        
+        else:
+            result = [{
                     'review_id' : reviews[i].id,
                     'title'     : reviews[i].title,
                     'rating'    : reviews[i].rating,
@@ -267,12 +272,6 @@ class ReviewTopThreeView(View):
                         'poster' : AWS_S3_URL+ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
                         'title'  : reviews[i].movie.title,
                         }
-                } for i in range(3)]
+                } for i in range(len(reviews))]
 
-                return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
-        
-        elif len(reviews) == 0 :
-            
-                return JsonResponse({'message' : 'NO_REVIEW'}, status=200)
-        
-        else: return JsonResponse({'message' : 'REVIEWS_NOT_ENOUGH'}, status=200)
+            return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)

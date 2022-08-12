@@ -10,7 +10,7 @@ from users.models      import User, SocialPlatform, Group, ProfileImage, SocialT
 from movies.models     import Image
 from reviews.models    import Review
 from core.utils        import login_decorator
-from my_settings       import SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
 #* 카카오 신규유저 테스트
@@ -54,6 +54,7 @@ class KakaoLogInCallbackView(APIView):
             nickname          = kakao_response['kakao_account']['profile']['nickname']
             profile_image_url = kakao_response['kakao_account']['profile']['profile_image_url']
             email             = kakao_response['kakao_account']['email']
+            #! 카카로그인 안될시 이메일 동의여부 체크
             
             SocialToken.objects.update_or_create(
                     refresh_token = social_refresh_token,
@@ -64,6 +65,11 @@ class KakaoLogInCallbackView(APIView):
                         'expires_in'    : expires_in,
                     }
                 )
+            
+            social_id = SocialPlatform.objects.get(id=2).id
+            if len(User.objects.filter(email=email, social_id=2))>1:
+                return Response({'message': 'ERROR'}, status=400)
+            
             
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
@@ -121,62 +127,6 @@ class KakaoLogInCallbackView(APIView):
             return Response({'message': 'KEY_ERROR'}, status=400)
         
 #NaverLogin
-# TODO : DRF 적용
-class LoginNaverView(View):
-    def get(self, request):
-        try:
-            naver_access_token  = request.GET.get('access_token')
-            naver_refresh_token = request.GET.get('refresh_token')
-            headers             = {'Authorization' : 'Bearer '+ naver_access_token}
-            profile_api_url     = "https://openapi.naver.com/v1/nid/me"
-            user_info_dict      = requests.get(profile_api_url, headers=headers, timeout=5).json()
-            user_info           = user_info_dict['response']
-
-            if(user_info_dict['message']!= 'success'):
-                return JsonResponse({'message' : user_info_dict['message'], 'ressultcode': user_info_dict['resultcode']}, status=400)
-            
-            user = User.objects.filter(social_id=user_info['id'])
-
-            if user.exists():
-                user = User.objects.get(social_id=user_info['id'])
-                
-            else:
-                user = User.objects.create(
-                    social_id       = user_info['id'],
-                    nickname        = user_info['name'],
-                    email           = user_info['email'],
-                    group           = Group.objects.get(id=2),
-                    social_platform = SocialPlatform.objects.get(id=3)
-                )
-                
-                user_image    = Image.objects.create(image_url=user_info['profile_image'])
-                profile_image = ProfileImage.objects.create(user_id=user.id, image_id=user_image.id)
-                
-            access_token = jwt.encode({'id':user.id, 
-                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
-            
-            refresh_token = jwt.encode({'id':user.id, 
-                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
-            
-            user.refresh_token = refresh_token
-            user.save()
-            
-            token_info = {
-                'access_token':access_token,
-                'refresh_token':refresh_token 
-            }
-            
-            return JsonResponse({
-                'message'   : 'SUCCESS',
-                'token_info': token_info,
-                }, status=200)        
-
-        except KeyError:
-            return JsonResponse({'message':'KEY_ERROR'}, status=400)
-        
-        except ValueError:
-            return JsonResponse({'message':'VALUE_ERROR'}, status=400)         
-
 class LoginNaverCallBackView(View):
     def get(self, request):
         token_api_uri = 'https://nid.naver.com/oauth2.0/token'
@@ -190,15 +140,53 @@ class LoginNaverCallBackView(View):
         }
         
         token_response = requests.post(token_api_uri, data=data)
-        token_info     = token_response.json()
-        access_token   = token_info['access_token']
-        refresh_token  = token_info['refresh_token']
-        token_type     = token_info['token_type']
-        expires_in     = token_info['expires_in']
         
-        host = 'http://c340-221-147-33-186.ngrok.io/'
+        token_info    = token_response.json()
+        access_token  = token_info['access_token']
+        refresh_token = token_info['refresh_token']
+        token_type    = token_info['token_type']
+        expires_in    = token_info['expires_in']
+    
+        user_info = requests.post('https://openapi.naver.com/v1/nid/me', headers={'Authorization':'Bearer '+ access_token}, timeout=5).json()
+
+        if(user_info['message']!= 'success'):
+            return JsonResponse({'message' : user_info['message'], 'ressultcode': user_info['resultcode']}, status=400)
         
-        return redirect(f'{host}users/login/naver?access_token={access_token}&refresh_token={refresh_token}&token_type={token_type}&expires_in={expires_in}')
+        user = User.objects.filter(social_id=user_info['response']['id'])
+
+        if user.exists():
+            user = User.objects.get(social_id=user_info['response']['id'])
+            
+        else:
+            user = User.objects.create(
+                social_id       = user_info['response']['id'],
+                nickname        = user_info['response']['name'],
+                email           = user_info['response']['email'],
+                group           = Group.objects.get(id=2),
+                social_platform = SocialPlatform.objects.get(id=3)
+            )
+            
+            user_image    = Image.objects.create(image_url=user_info['response']['profile_image'])
+            profile_image = ProfileImage.objects.create(user_id=user.id, image_id=user_image.id)
+            
+        access_token = jwt.encode({'id':user.id, 
+            'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=6)}, SECRET_KEY, ALGORITHM)
+        
+        refresh_token = jwt.encode({'id':user.id, 
+            'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=24)}, SECRET_KEY, ALGORITHM)
+        
+        user.refresh_token = refresh_token
+        user.save()
+        
+        token_info = {
+            'access_token':access_token,
+            'refresh_token':refresh_token 
+        }
+        
+        return JsonResponse({
+            'message'   : 'SUCCESS',
+            'token_info': token_info,
+            }, status=200)        
      
 class UserInformationView(View):
     @login_decorator
@@ -265,15 +253,16 @@ class UserListView(APIView):
         users = User.objects.all()
         
         user_data = [{
-            'id'              : user.id,
-            'social_platform' : user.social_platform.name,
-            'social_id'       : user.social_id,
-            'nickname'        : user.nickname,
-            'email'           : user.email,
-            'phone_number'    : user.phone_number,
-            'group'           : user.group.name,
-            'is_valid'        : user.is_valid,
-            'review_count'    : len(Review.objects.filter(user_id=user.id)),
+            'id'                : user.id,
+            'social_platform'   : user.social_platform.name,
+            'social_id'         : user.social_id,
+            'nickname'          : user.nickname,
+            'email'             : user.email,
+            'phone_number'      : user.phone_number,
+            'group'             : user.group.name,
+            'is_valid'          : user.is_valid,
+            'review_count'      : len(Review.objects.filter(user_id=user.id)),
+            'profile_image_url' : AWS_S3_URL+ProfileImage.objects.get(user_id=user.id).image.image_url,
             } for user in users]
         
         return Response({'data': user_data}, status=200)

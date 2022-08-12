@@ -183,9 +183,7 @@ class ActorDetailView(APIView):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
             
             else:
-                image_url = FileHander(s3_client).upload(image_url, 'image/actor')
-                image     = Image.objects.create(image_url=image_url)
-                
+                image = Image.objects.create(image_url=image_url)
                 actor = Actor.objects.create(
                     name       = name,
                     image      = image,
@@ -198,8 +196,7 @@ class ActorDetailView(APIView):
                 )
                 
                 ActorJob.objects.bulk_create([
-                    ActorJob(actor = actor,
-                             job   = Job.objects.get(id=job_id)
+                    ActorJob(actor = actor, job = Job.objects.get(id=job_id)
                 ) for job_id in job_id_list])
             
                 return Response({'message': 'CREATE_SUCCESS'}, status=201)
@@ -250,18 +247,32 @@ class ActorListView(APIView):
 class ActorIntimacyView(APIView):
     @login_decorator
     def get(self, request, actor_id):
+        
         user = request.user
         
-        total_count  = MovieActor.objects.filter(actor_id=actor_id).count()
-        viewed_count = len([MovieActor.objects.filter(movie_id=review.movie_id, actor_id=actor_id)
-                       for review in Review.objects.filter(user_id=user.id)])
-
-        if total_count==0:
-            return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
+        data = [{
+            'movie_id': review.movie_id,
+            'rating' : review.rating,
+            } for review in Review.objects.filter(user_id=user)]
         
-        intimacy_info = {
-            'total_count'  : total_count,
-            'viewed_count' : viewed_count,
-        }
+        return Response({'data': data}, status=200)
+    
+    
+class MovieListView(APIView):
+    def get(self, request):
+        movies = Movie.objects.all()
         
-        return Response({'intimacy_info': intimacy_info}, status=200)
+        data = [{
+            'id'                  : movie.id,
+            'title'               : movie.title,    
+            'en_title'            : movie.en_title,    
+            'running_time'        : movie.running_time,    
+            'ratings'             : '미구현',
+            'country'             : movie.country.name,    
+            'genre'               : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie.id)],    
+            'release_date'        : movie.release_date,    
+            'category'            : movie.category.name,
+            'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.id).image.image_url,        
+        } for movie in movies]
+        
+        return Response({'message': data}, status=200)
