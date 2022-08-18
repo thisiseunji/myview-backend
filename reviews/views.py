@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
-from movies.models  import Image, MovieGenre, ThumbnailImage
+from movies.models  import Image, MovieGenre, MovieImage, ThumbnailImage
 from reviews.models import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models   import User
 from my_settings    import AWS_S3_URL
@@ -269,7 +269,9 @@ class ReviewTopThreeView(View):
                     'rating'    : reviews[i].rating,
                     'movie'     : {
                         'id'     : reviews[i].movie_id,
-                        'poster' : AWS_S3_URL+ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
+                        'poster' : AWS_S3_URL+MovieImage.objects.filter(movie_id=reviews[i].movie)[0].image.image_url \
+                            if MovieImage.objects.filter(movie_id=reviews[i].movie).exists() \
+                            else AWS_S3_URL+ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
                         'title'  : reviews[i].movie.title,
                         }
                 } for i in range(len(reviews))]
