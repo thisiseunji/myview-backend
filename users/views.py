@@ -1,3 +1,4 @@
+from random import random, randrange
 import requests, jwt, datetime
 
 from django.shortcuts        import redirect
@@ -7,7 +8,7 @@ from rest_framework.views    import APIView
 from rest_framework.response import Response
 
 from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
-from movies.models     import Image
+from movies.models     import Image, MovieImage
 from reviews.models    import Review
 from core.utils        import login_decorator
 from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
@@ -266,3 +267,11 @@ class UserListView(APIView):
             } for user in users]
         
         return Response({'data': user_data}, status=200)
+    
+class LoginBackGroundView(APIView):
+    def get(self, request):
+        image_length = len(MovieImage.objects.all())
+        image_url    = AWS_S3_URL+MovieImage.objects.get(id=randrange(0, image_length)).image.image_url
+        
+        return Response({'image_url': image_url}, status=200)
+        

@@ -1,5 +1,5 @@
 from django.urls import path
-from users.views import KakaoLogIn, DeleteAccountView, KakaoLogInCallbackView, UserInformationView, UserProfileUpdateView, UserListView
+from users.views import KakaoLogIn, DeleteAccountView, KakaoLogInCallbackView, LoginBackGroundView, UserInformationView, UserProfileUpdateView, UserListView
 from users.views import LoginNaverCallBackView #, LoginNaverView 
 
 urlpatterns = [
@@ -9,6 +9,9 @@ urlpatterns = [
     
     #네이버로그인
     path('/login/naver/callback', LoginNaverCallBackView.as_view()),
+    
+    #로그인 백그라운드 이미지
+    path('/login/background', LoginBackGroundView.as_view()),
     
     #user_information
     path('/info', UserInformationView.as_view()),
