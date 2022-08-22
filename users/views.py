@@ -271,7 +271,7 @@ class UserListView(APIView):
 class LoginBackGroundView(APIView):
     def get(self, request):
         image_length = len(MovieImage.objects.all())
-        movie_image  = MovieImage.objects.get(id=randrange(0, image_length))
+        movie_image  = MovieImage.objects.get(id=randrange(1, image_length+1))
         
         data = {
             'movie_id'    : movie_image.movie.id,

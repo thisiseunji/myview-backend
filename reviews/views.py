@@ -35,7 +35,7 @@ class ReviewView(APIView):
                 'tags'          : [
                     {
                         'tag'   : review_tag.tag.name, 
-                        'color' : ColorCode.objects.get(id=randrange(0,4)).color_code
+                        'color' : ColorCode.objects.get(id=randrange(1,4+1)).color_code
                     } for review_tag in ReviewTag.objects.filter(review=review)],
                 'movie'         : {
                     'id'       : review.movie.id,
