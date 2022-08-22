@@ -119,7 +119,7 @@ class MovieSearchView(View):
         except Movie.DoesNotExist:
             
             return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
-  
+
 class ActorDetailView(APIView):
     def get(self, request, actor_id):
         try:
@@ -178,9 +178,14 @@ class ActorDetailView(APIView):
             height       = data.get('height', 0)
             weight       = data.get('weight', 0)
             job_id_list  = data.getlist('job_id')
+            agency       = data['agency']
             
             if Actor.objects.filter(name=name, birth=birth):
                 return Response({'message': 'ALREADY_ACTOR'}, status=400)
+            
+            for job_id in job_id_list:
+                if not Job.objects.get(id=job_id):
+                    raise Job.DoesNotExist
             
             else:
                 image = Image.objects.create(image_url=image_url)
@@ -193,16 +198,25 @@ class ActorDetailView(APIView):
                     debut_year = debut_year,
                     height     = height,
                     weight     = weight,
+                    agency     = agency,
                 )
                 
-                ActorJob.objects.bulk_create([
-                    ActorJob(actor = actor, job = Job.objects.get(id=job_id)
-                ) for job_id in job_id_list])
+                for job_id in job_id_list:
+                    ActorJob.objects.create(
+                        actor = actor,
+                        job = Job.objects.get(id=job_id)
+                    )
             
-                return Response({'message': 'CREATE_SUCCESS'}, status=201)
+            return Response({'message': 'CREATE_SUCCESS'}, status=201)
             
         except KeyError:
             return Response({'message': 'KEY_ERROR'}, status=400)
+        
+        except Job.DoesNotExist:
+            return Response({'message': 'NOT_EXIST_JOB_ID'}, status=400)
+        
+        except ValueError:
+            return Response({'message': 'VALUE_ERROR'}, status=400)
         
     def patch(self, request):
         data         = request.data
@@ -229,7 +243,8 @@ class ActorDetailView(APIView):
             actor.save()
             
         return Response({'message': 'ACTOR_UPDATE_SUCCESS'}, status=201)
-               
+
+
 class ActorListView(APIView):
     def get(self, request):
         actors = Actor.objects.all().order_by('name')
