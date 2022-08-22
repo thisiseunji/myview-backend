@@ -275,4 +275,4 @@ class MovieListView(APIView):
             'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.id).image.image_url,        
         } for movie in movies]
         
-        return Response({'message': data}, status=200)
+        return Response({'data': data}, status=200)
