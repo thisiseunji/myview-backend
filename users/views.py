@@ -271,14 +271,13 @@ class UserListView(APIView):
 class LoginBackGroundView(APIView):
     def get(self, request):
         image_length = len(MovieImage.objects.all())
-        movie_image = MovieImage.objects.get(id=randrange(0, image_length))
-        image_url    = AWS_S3_URL+movie_image.image.image_url
+        movie_image  = MovieImage.objects.get(id=randrange(0, image_length))
         
         data = {
             'movie_id'    : movie_image.movie.id,
             'title'       : movie_image.movie.title,
             'description' : movie_image.movie.description,
-            'image_url'   : image_url
+            'image_url'   : AWS_S3_URL+movie_image.image.image_url
         }
         
         return JsonResponse({'data': data}, status=200)
