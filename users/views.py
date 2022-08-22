@@ -274,4 +274,4 @@ class LoginBackGroundView(APIView):
         image_url    = AWS_S3_URL+MovieImage.objects.get(id=randrange(0, image_length)).image.image_url
         
         return Response({'image_url': image_url}, status=200)
-        
+      
