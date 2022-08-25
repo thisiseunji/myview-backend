@@ -12,15 +12,15 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Platform',
+            name='Image',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100)),
-                ('image_url', models.URLField(blank=True, null=True)),
-                ('url', models.URLField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('image_url', models.CharField(max_length=200)),
             ],
             options={
-                'db_table': 'platforms',
+                'db_table': 'images',
             },
         ),
     ]

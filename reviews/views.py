@@ -6,7 +6,6 @@ from rest_framework.views import APIView
 
 from core.utils     import login_decorator
 from core.storages  import FileHander, s3_client
-from movies.models  import Image, MovieGenre, MovieImage, ThumbnailImage
 from reviews.models import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models   import User
 from my_settings    import AWS_S3_URL

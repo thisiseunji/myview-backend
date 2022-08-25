@@ -9,7 +9,6 @@ from datetime                import datetime
 from django.db               import transaction
 from django.db.models        import Q
 
-from .models                import *
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
