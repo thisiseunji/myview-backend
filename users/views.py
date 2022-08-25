@@ -8,7 +8,6 @@ from rest_framework.views    import APIView
 from rest_framework.response import Response
 
 from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
-from movies.models     import Image, MovieImage
 from reviews.models    import Review
 from core.utils        import login_decorator
 from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET

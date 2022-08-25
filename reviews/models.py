@@ -10,19 +10,20 @@ class ColorCode(models.Model):
 
 class Tag(models.Model):
     name       = models.CharField(max_length=50)
+    color_code = models.ForeignKey('reviews.ColorCode', on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tags'
 
 class Review(TimeStampedModel):
-    title         = models.CharField(max_length=100)
+    title         = models.CharField(max_length=100, blank=True)
     content       = models.TextField(max_length=1000, blank=True)
     rating        = models.DecimalField(max_digits=2, decimal_places=1)
     watched_date  = models.DateField(auto_now=False, auto_now_add=False, blank=True, null=True)
     watched_time  = models.TimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
     with_user     = models.CharField(max_length=30, blank=True)
     user          = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    movie         = models.ForeignKey('movies.Movie', on_delete=models.CASCADE)
+    movie_id      = models.CharField(max_length=1000)
     
     class Meta:
         db_table = 'reviews'
@@ -52,7 +53,7 @@ class ReviewPlace(TimeStampedModel):
 
 class ReviewImage(models.Model):
     review = models.ForeignKey('Review', on_delete=models.CASCADE)    
-    image  = models.ForeignKey('movies.Image', on_delete=models.CASCADE)
+    image  = models.ForeignKey('adminpage.Image', on_delete=models.CASCADE)
     
     class Meta:
         db_table = 'review_images'

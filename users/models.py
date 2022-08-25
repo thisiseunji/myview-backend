@@ -40,7 +40,7 @@ class SocialToken(TimeStampedModel):
         
 class ProfileImage(TimeStampedModel):
     user  = models.ForeignKey('User', on_delete=models.CASCADE)
-    image = models.ForeignKey('movies.Image', on_delete=models.CASCADE)
+    image = models.ForeignKey('adminpage.Image', on_delete=models.CASCADE)
     
     class Meta:
         db_table = 'profile_images'
@@ -53,7 +53,7 @@ class Collection(TimeStampedModel):
         db_table = 'collections'
 
 class CollectionMovie(models.Model):
-    movie      = models.ForeignKey('movies.Movie', on_delete=models.CASCADE)
+    movie_id   = models.CharField(max_length=1000)
     collection = models.ForeignKey('Collection', on_delete=models.CASCADE)
     
     class Meta:
