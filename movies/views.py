@@ -12,36 +12,32 @@ from django.db.models        import Q
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL, TMDB_API_KEY
+from my_settings            import AWS_S3_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
+from movies.tmdb            import tmdb_helper
 
 class MovieDetailView(APIView):
     def get(self, request, movie_id):
         # try:
-            base_url = 'https://api.themoviedb.org/3'
-            path = '/movie/'+str(movie_id)
-
-            params = {
-                'api_key' : TMDB_API_KEY,
-                'language' : 'ko',
-            }
-            
-            res_movie_detail_data = requests.get(base_url + path, params=params)
-            movie_detail_data = res_movie_detail_data.json()
+            # detail
+            request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id), region='KR', language='ko')
+            print(request_url)
+            raw_data = requests.get(request_url)
+            movie_data = raw_data.json()
             
             movie_data = {
-                'id'                  : movie_detail_data.get('id'),
-                'title'               : movie_detail_data.get('title'),
-                'en_title'            : movie_detail_data.get('original_title'),
-                'description'         : movie_detail_data.get('overview'),
-                'running_time'        : movie_detail_data.get('runtime'),
+                'id'                  : movie_data.get('id'),
+                'title'               : movie_data.get('title'),
+                'en_title'            : movie_data.get('original_title'),
+                'description'         : movie_data.get('overview'),
+                'running_time'        : movie_data.get('runtime'),
                 'age'                 : '미구현 adult: true or false',
-                'ratings'             : movie_detail_data.get('vote_average'),
-                'release_date'        : movie_detail_data.get('release_date'),
-                'country'             : movie_detail_data.get('production_countries')[0].get('name'),
+                'ratings'             : movie_data.get('vote_average'),
+                'release_date'        : movie_data.get('release_date'),
+                'country'             : movie_data.get('production_countries')[0].get('name'),
                 'category'            : '미구현',
-                'genre'               : [genre.get('name') for genre in movie_detail_data.get('genres')],
+                'genre'               : [genre.get('name') for genre in movie_data.get('genres')],
                 'platform_name'       : '미구현',
                 'platform_logo_image' : '미구현',
                 'actor'               : '미구현',  
@@ -53,7 +49,7 @@ class MovieDetailView(APIView):
                 #     'role'      : movie_actor.role.name,
                 #     'role_name' : movie_actor.role_name,
                 # } for movie_actor in MovieActor.objects.filter(movie_id=movie_id)],  
-                'thumbnail_image_url' : movie_detail_data.get('poster_path'),
+                'thumbnail_image_url' : movie_data.get('poster_path'),
                 'image_url'           : '미구현',
                 'video_url'           : '미구현',
                 }
