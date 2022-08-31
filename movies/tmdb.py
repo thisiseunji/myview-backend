@@ -3,7 +3,7 @@ from my_settings import TMDB_API_KEY
 class TMDBHelper:
     """API 요청에 필요한 기능들을 제공합니다.
     
-    Attrivutes:
+    Attributes:
         api_key: API 서비스에서 발급받은 API KEY입니다.
     """
     
