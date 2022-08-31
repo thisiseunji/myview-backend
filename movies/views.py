@@ -1,4 +1,4 @@
-import random
+import requests, random
 
 from django.http             import JsonResponse
 from django.views            import View
@@ -13,7 +13,7 @@ from .models                import *
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL
+from my_settings            import AWS_S3_URL, TMDB_ACCESS_TOKEN, TMDB_API_KEY, TMDB_BASE_URL, TMDB_IMAGE_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
 
@@ -70,56 +70,62 @@ class MovieReviewView(View):
         
         return JsonResponse({'message':'SUCCESS', 'result':reviews}, status=200)
     
-class SimpleSearchView(View):
+#tmdb
+class SimpleSearchView(APIView):
     def get(self, request):
-        movies = Movie.objects.all()
-        latest = movies.order_by('-release_date', 'title', 'id')[:10]
-        titles = []
+        
+        params    = {
+            'api_key'  : TMDB_API_KEY,
+            'language' : 'ko-KR',
+            'region'   : 'KR'
+        }
+        
+        popular_movies = requests.get(f'{TMDB_BASE_URL}/movie/popular', params=params).json()
+        
+        #titles = []
         rank   = []
         
-        for movie in movies:
-            titles.append({
-                'id'    : movie.id,
-                'title' : movie.title
-            })
+        # 이 데이터를 제공하는 목적, '영화 검색'을 제공하는 것이 목적이라면, MovieSearchView를 이용할 수 있도록 할 것
+        # for movie in movies['result'][:10]:
+        #     titles.append({
+        #         'id'    : movie.id,
+        #         'title' : movie.title
+        #     })
         
-        for movie in latest:
+        for movie in popular_movies['results'][:10]:
             rank.append({
-                'id'    : movie.id,
-                'title' : movie.title
+                'id'    : movie['id'],
+                'title' : movie['title']
             })
-        
-        return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
-    
-class MovieSearchView(View):
+            
+        return JsonResponse({'message':'SUCCESS', 'rank':rank}, status=200)
+
+# tmdb
+class MovieSearchView(APIView):
     def get(self, request):
-        try:
-            q = request.GET.get('q')
-            
-            query = Q()
-            query |= Q(title__icontains=q)
-            query |= Q(en_title__icontains=q)
-            #쿼리를 통해 정참조하고있는 다른 테이블의 데이터를 검증하는 조건을 더할 것 - country
-            
-            movie_list = Movie.objects.filter(query).distinct()
-            
-            result = [
-                {
-                    'movie_id'     : movie.id,
-                    'title'        : movie.title,
-                    'en_title'     : movie.en_title,
-                    'running_time' : movie.running_time,
-                    'release_date' : movie.release_date,
-                    'country'      : movie.country.name,
-                    'poster'       : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie.id).image.image_url
-                } for movie in movie_list]
-            
-            return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
+        query   = request.GET.get('q')
+        params    = {
+            'api_key'  : TMDB_API_KEY,
+            'language' : 'ko-KR',
+            'query'    : query,
+        }
         
-        except Movie.DoesNotExist:
+        movies = requests.get(f'{TMDB_BASE_URL}/search/movie', params=params).json()
+        
+        result = [
+            {
+                'movie_id'     : movie['id'],
+                'title'        : movie['title'],
+                'en_title'     : movie['original_title'],
+                'running_time' : '', #디테일 api 호출 필요,
+                'release_date' : movie['release_date'],
+                'country'      : '', #디테일 api호출 필요,
+                'poster'       : TMDB_IMAGE_URL+movie['poster_path']  
+            } for movie in movies['results']]
+        
+        return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
             
-            return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
-  
+    
 class ActorDetailView(APIView):
     def get(self, request, actor_id):
         try:
@@ -243,7 +249,6 @@ class ActorListView(APIView):
         
         return Response({'actor_list': actor_list}, status=200)
     
-
 class ActorIntimacyView(APIView):
     @login_decorator
     def get(self, request, actor_id):
@@ -256,8 +261,7 @@ class ActorIntimacyView(APIView):
             } for review in Review.objects.filter(user_id=user)]
         
         return Response({'data': data}, status=200)
-    
-    
+      
 class MovieListView(APIView):
     def get(self, request):
         movies = Movie.objects.all()
