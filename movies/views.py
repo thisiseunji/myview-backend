@@ -74,7 +74,7 @@ class MovieReviewView(View):
 #tmdb  
 class SimpleSearchView(APIView):
     def get(self, request):
-        request_url    = tmdb_helper.get_request_url(method='/movie/popular', language='KR', region='KR')
+        request_url    = tmdb_helper.get_request_url(method='/movie/popular', language='ko-KR', region='KR')
         popular_movies = requests.get(request_url).json()
         
         #titles = []
@@ -99,7 +99,7 @@ class SimpleSearchView(APIView):
 class MovieSearchView(APIView):
     def get(self, request):
         query       = request.GET.get('q')
-        request_url = tmdb_helper.get_request_url(method='/search/movie', language='KR', query=query)
+        request_url = tmdb_helper.get_request_url(method='/search/movie', language='ko-KR', query=query)
         movies      = requests.get(request_url).json()
         
         result = [
@@ -110,7 +110,7 @@ class MovieSearchView(APIView):
                 'running_time' : '', #디테일 api 호출 필요,
                 'release_date' : movie['release_date'],
                 'country'      : '', #디테일 api호출 필요,
-                'poster'       : TMDB_IMAGE_URL+movie['poster_path']  
+                'poster'       : TMDB_IMAGE_URL+movie['poster_path'] if movie['poster_path'] else '' 
             } for movie in movies['results']]
         
         return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
