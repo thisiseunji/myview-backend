@@ -1,5 +1,6 @@
 #movies.views.py
 
+from dataclasses import replace
 import requests, random
 
 from django.http             import JsonResponse
@@ -13,6 +14,7 @@ from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_B
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
 from core.tmdb              import tmdb_helper
+from datetime               import datetime
 
 
 #tmdb 수정
@@ -52,7 +54,7 @@ class MovieDetailView(APIView):
             'en_title'            : movie_data.get('original_title'),
             'description'         : movie_data.get('overview'),
             'running_time'        : movie_data.get('runtime'),
-            'age'                 : '미구현 adult: true or false',
+            'age'                 : movie_data.get('adult'),
             'ratings'             : movie_data.get('vote_average'),
             'release_date'        : movie_data.get('release_date'),
             'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
@@ -63,10 +65,9 @@ class MovieDetailView(APIView):
             'actor'               : [{
                 'id'        : actor.get('id'),
                 'name'      : actor.get('name'),
-                'country'   : '미구현 제공여부 확인중',
-                'image'     : actor.get('profile_path'),
-                'role'      : '미구현 제공여부 확인중',
-                'role_name' : 'character',
+                'image'     : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
+                'role'      : actor.get('known_for_department'),
+                'role_name' : actor.get('character'),
                 } for actor in actor_data.get('cast')] if actor_data.get('cast') != None else '',  
             'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie_data.get('poster_path') if movie_data.get('poster_path') != None else '',
             'image_url'           : [TMDB_IMAGE_BASE_URL+image.get('file_path') for image in image_data.get('backdrops')] if image_data.get('backdrops') != None else '',
@@ -148,3 +149,32 @@ class MovieSearchView(APIView):
 #             } for review in Review.objects.filter(user_id=user)]
         
 #         return Response({'data': data}, status=200)
+
+
+class ActorDetailView(APIView):
+    def get(self, request, actor_id):
+        # PERSONS / Get Details
+        person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id))
+        person_data_raw_data = requests.get(person_data_request_url)
+        actor = person_data_raw_data.json()
+        
+        # PERSONS / Get Movie Credits
+        person_movie_credits_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id)+'/movie_credits')
+        person_movie_credits_data_raw_data = requests.get(person_movie_credits_data_request_url)
+        actor_movie = person_movie_credits_data_raw_data.json()
+
+        actor_data = {
+            'name'      : actor.get('name'),
+            'image_url' : TMDB_IMAGE_BASE_URL+actor.get('profile_path'),
+            'country'   : actor.get('place_of_birth'),
+            'starring_list' : [{
+                'title'               : movie.get('title'),
+                'release'             : movie.get('release_date').split("-")[0],
+                'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
+                'role_name'           : movie.get('character'),
+                'ratings'             : 3, #미구현
+                'platform'            : '미구현',
+                } for movie in actor_movie.get('cast')]
+        }
+    
+        return Response({'actor_info': actor_data}, status=200)
