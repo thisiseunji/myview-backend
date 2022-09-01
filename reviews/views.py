@@ -1,14 +1,18 @@
-from random         import randrange
-from django.http    import JsonResponse
-from django.views   import View
-from django.db      import transaction
+import requests
+
+from random               import randrange
+from django.http          import JsonResponse
+from django.views         import View
+from django.db            import transaction
 from rest_framework.views import APIView
 
-from core.utils     import login_decorator
-from core.storages  import FileHander, s3_client
-from reviews.models import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
-from users.models   import User
-from my_settings    import AWS_S3_URL
+from core.utils       import login_decorator
+from core.storages    import FileHander, s3_client
+from core.tmdb        import tmdb_helper
+from adminpage.models import Image
+from reviews.models   import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
+from users.models     import User
+from my_settings      import AWS_S3_URL, TMDB_IMAGE_BASE_URL
 
 class ReviewView(APIView):
     @login_decorator
@@ -16,6 +20,9 @@ class ReviewView(APIView):
         try:
             user   = request.user
             review = Review.objects.get(user=user, movie_id=movie_id)
+            request_url = tmdb_helper.get_request_url(method=f'/movie/{movie_id}', language='KO' )
+            movie = requests.get(request_url).json()
+            
             result = { 
                 'review_id'     : review.id,
                 'title'         : review.title,
@@ -34,13 +41,14 @@ class ReviewView(APIView):
                 'tags'          : [
                     {
                         'tag'   : review_tag.tag.name, 
+                        #'color' : review_tag.tag.color_code
                         'color' : ColorCode.objects.get(id=randrange(1,4+1)).color_code
                     } for review_tag in ReviewTag.objects.filter(review=review)],
                 'movie'         : {
-                    'id'       : review.movie.id,
-                    'title'    : review.movie.title,
-                    'country'  : review.movie.country.name,
-                    'category' : review.movie.category.name,
+                    'id'       : movie['id'],
+                    'title'    : movie['title'],
+                    'country'  : movie['production_countries'][0]['name'],
+                    'category' : 'movie',
                 }
             }
         
@@ -107,7 +115,8 @@ class ReviewView(APIView):
             
             if tags:
                 for tag in tags:
-                    tag, is_created = Tag.objects.get_or_create(name=tag)
+                    #TODO : 확인필수
+                    tag, is_created = Tag.objects.get_or_create(name=tag, color_code_id=randrange(1,len(ColorCode.objects.all())))
                     ReviewTag.objects.create(
                         review = review,
                         tag    = tag
@@ -146,7 +155,7 @@ class ReviewView(APIView):
                 if key == 'tags':
                     ReviewTag.objects.filter(review=review).delete()
                     for tag_name in data.getlist(key, None):
-                        tag, is_created = Tag.objects.get_or_create(name=tag_name)
+                        tag, is_created = Tag.objects.get_or_create(name=tag, color_code_id=randrange(1,len(ColorCode.objects.all())))
                         ReviewTag.objects.create(
                             review = review,
                             tag    = tag
@@ -228,22 +237,26 @@ class ReviewListView(View):
         try:
             user    = request.user
             reviews = User.objects.get(id=user.id).review_set.all().order_by('-updated_at')
-            result  = [{ 
-                'review_id' : review.id,
-                'title'     : review.title,
-                'rating'    : review.rating,
-                'movie'     : {
-                    'id'       : review.movie.id,
-                    'poster'   : AWS_S3_URL+ThumbnailImage.objects.get(movie=review.movie).image.image_url,
-                    'title'    : review.movie.title,
-                    'en_title' : review.movie.en_title,
-                    'released' : review.movie.release_date,
-                    'country'  : review.movie.country.name,
-                    'genre'    : [movie.genre.name for movie in MovieGenre.objects.filter(movie=review.movie)],
-                    'age'      : review.movie.age,
-                    'running_time' : review.movie.running_time
-                }
-            } for review in reviews]
+            result = []
+            for review in reviews:
+                request_url = tmdb_helper.get_request_url(method=f'/movie/{review.movie_id}', language='KO')
+                movie = requests.get(request_url).json()
+                result.append({ 
+                    'review_id' : review.id,
+                    'title'     : review.title,
+                    'rating'    : review.rating,
+                    'movie'     : {
+                        'id'       : movie['id'],
+                        'poster'   : TMDB_IMAGE_BASE_URL+movie['poster_path'] if movie['poster_path'] else '',
+                        'title'    : movie['title'],
+                        'en_title' : movie['original_title'],
+                        'released' : movie['release_date'],
+                        'country'  : movie['production_countries'][0]['name'],
+                        'genre'    : [genre['name'] for genre in movie['genres']],
+                        'age'      : movie['adult'],
+                        'running_time' : movie['runtime']
+                    }
+                })
             
             return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
         
@@ -262,17 +275,22 @@ class ReviewTopThreeView(View):
             return JsonResponse({'message' : 'NO_REVIEW'}, status=200)
         
         else:
-            result = [{
-                    'review_id' : reviews[i].id,
-                    'title'     : reviews[i].title,
-                    'rating'    : reviews[i].rating,
-                    'movie'     : {
-                        'id'     : reviews[i].movie_id,
-                        'poster' : AWS_S3_URL+MovieImage.objects.filter(movie_id=reviews[i].movie)[0].image.image_url \
-                            if MovieImage.objects.filter(movie_id=reviews[i].movie).exists() \
-                            else AWS_S3_URL+ThumbnailImage.objects.get(movie=reviews[i].movie).image.image_url,
-                        'title'  : reviews[i].movie.title,
+            result = []
+            for i in range(len(reviews)):
+                request_url = tmdb_helper.get_request_url(method=f'/movie/{reviews[i].movie_id}', language='KO')
+                movie       = requests.get(request_url).json()
+                
+                result.append(
+                    {
+                        'review_id' : reviews[i].id,
+                        'title'     : reviews[i].title,
+                        'rating'    : reviews[i].rating,
+                        'movie'     : {
+                            'id'     : reviews[i].movie_id,
+                            'poster' : TMDB_IMAGE_BASE_URL+movie.get('backdrop_path') if movie.get('backdrop_path') != None else movie.get('poster_path', ''),
+                            'title'  : movie.get('title','')
                         }
-                } for i in range(len(reviews))]
-
+                    }
+                )
+                
             return JsonResponse({'message' : 'SUCCESS', 'result' : result}, status=200)
