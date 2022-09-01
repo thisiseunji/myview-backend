@@ -4,14 +4,9 @@ import requests, random
 
 from django.http             import JsonResponse
 from django.views            import View
-from django.db.models        import Avg
 from rest_framework.views    import APIView
 from rest_framework.response import Response
-from datetime                import datetime
-from django.db               import transaction
-from django.db.models        import Q
 
-from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
 from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL
