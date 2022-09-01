@@ -1,3 +1,5 @@
+#movies.views.py
+
 import requests, random
 
 from django.http             import JsonResponse
@@ -12,49 +14,70 @@ from django.db.models        import Q
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL, TMDB_IMAGE_URL
+from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
 from core.tmdb              import tmdb_helper
 
-
+#tmdb 수정
 class MovieDetailView(APIView):
     def get(self, request, movie_id):
-        try:
-            movie          = Movie.objects.get(id=movie_id)
-            review_ratings = Review.objects.filter(movie_id=movie.id).aggregate(Avg('rating'))['rating__avg']
-            
-            movie_data = {
-                'id'                  : movie.id,
-                'title'               : movie.title,
-                'en_title'            : movie.en_title,
-                'description'         : movie.description,
-                'running_time'        : movie.running_time,
-                'age'                 : movie.age,
-                'ratings'             : str(float(review_ratings)) if review_ratings else 0,
-                'release_date'        : movie.release_date,
-                'country'             : movie.country.name,
-                'category'            : movie.category.name,
-                'genre'               : [movie_genre.genre.name for movie_genre in MovieGenre.objects.filter(movie_id=movie_id)],
-                'platform_name'       : MoviePlatform.objects.get(movie_id=movie.id).platform.name,
-                'platform_logo_image' : AWS_S3_URL+MoviePlatform.objects.get(movie_id=movie.id).platform.image_url,
-                'actor'               : [{
-                    'id'        : movie_actor.actor.id,
-                    'name'      : movie_actor.actor.name,
-                    'country'   : movie_actor.actor.country.name,
-                    'image'     : AWS_S3_URL+movie_actor.actor.image.image_url,
-                    'role'      : movie_actor.role.name,
-                    'role_name' : movie_actor.role_name,
-                } for movie_actor in MovieActor.objects.filter(movie_id=movie_id)],  
-                'thumbnail_image_url' : AWS_S3_URL+ThumbnailImage.objects.get(movie_id=movie_id).image.image_url,
-                'image_url'           : [AWS_S3_URL+image.image.image_url for image in MovieImage.objects.filter(movie_id=movie_id)],
-                'video_url'           : [AWS_S3_URL+video.video.video_url for video in MovieVideo.objects.filter(movie_id=movie_id)],
-                }
-            
-            return Response({'movie_info': movie_data}, status=200)
+        # MOVIES / Get Details
+        movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id), region='KR', language='ko')
+        movie_data_raw_data = requests.get(movie_data_request_url)
+        movie_data = movie_data_raw_data.json()
         
-        except Movie.DoesNotExist:
-            return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
+        # MOVIES / Get credits
+        actor_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/credits', language='ko')
+        actor_data_raw_data = requests.get(actor_data_request_url)
+        actor_data = actor_data_raw_data.json()
+        
+        # MOVIES / Get Images
+        image_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/images')
+        image_data_raw_data = requests.get(image_data_request_url)
+        image_data = image_data_raw_data.json()
+        
+        # MOVIES / Get Videos
+        video_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/videos', language='ko')
+        video_data_raw_data = requests.get(video_data_request_url)
+        video_data = video_data_raw_data.json()
+        
+        # MOVIES / Get Watch Providers
+        provider_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/watch/providers')
+        provider_data_raw_data = requests.get(provider_data_request_url)
+        provider_data = provider_data_raw_data.json()
+        
+        if movie_data.get('id') == None :
+            return Response('{message : INVALID_DATA}', status=404)
+        
+        movie_data = {
+            'id'                  : movie_data.get('id'),
+            'title'               : movie_data.get('title'),
+            'en_title'            : movie_data.get('original_title'),
+            'description'         : movie_data.get('overview'),
+            'running_time'        : movie_data.get('runtime'),
+            'age'                 : '미구현 adult: true or false',
+            'ratings'             : movie_data.get('vote_average'),
+            'release_date'        : movie_data.get('release_date'),
+            'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
+            'category'            : '미구현 제공여부 확인중',
+            'genre'               : [genre.get('name') for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
+            'platform_name'       : [provider.get('provider_name') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
+            'platform_logo_image' : [TMDB_IMAGE_BASE_URL+provider.get('logo_path') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
+            'actor'               : [{
+                'id'        : actor.get('id'),
+                'name'      : actor.get('name'),
+                'country'   : '미구현 제공여부 확인중',
+                'image'     : actor.get('profile_path'),
+                'role'      : '미구현 제공여부 확인중',
+                'role_name' : 'character',
+                } for actor in actor_data.get('cast')] if actor_data.get('cast') != None else '',  
+            'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie_data.get('poster_path') if movie_data.get('poster_path') != None else '',
+            'image_url'           : [TMDB_IMAGE_BASE_URL+image.get('file_path') for image in image_data.get('backdrops')] if image_data.get('backdrops') != None else '',
+            'video_url'           : [TMDB_VIDEO_BASE_URL+video.get('key') for video in video_data.get('results')] if video_data.get('results') != None else '',
+            }
+        
+        return Response({'movie_info': movie_data}, status=200)
 
 class MovieReviewView(View):
     def get(self, request, movie_id):
@@ -72,20 +95,12 @@ class MovieReviewView(View):
         return JsonResponse({'message':'SUCCESS', 'result':reviews}, status=200)
 
 #tmdb  
-class SimpleSearchView(APIView):
+class MoviePopularView(APIView):
     def get(self, request):
         request_url    = tmdb_helper.get_request_url(method='/movie/popular', language='ko-KR', region='KR')
         popular_movies = requests.get(request_url).json()
         
-        #titles = []
         rank   = []
-        
-        # 이 데이터를 제공하는 목적, '영화 검색'을 제공하는 것이 목적이라면, MovieSearchView를 이용할 수 있도록 할 것
-        # for movie in movies['result'][:10]:
-        #     titles.append({
-        #         'id'    : movie.id,
-        #         'title' : movie.title
-        #     })
         
         for movie in popular_movies['results'][:10]:
             rank.append({
@@ -101,17 +116,23 @@ class MovieSearchView(APIView):
         query       = request.GET.get('q')
         request_url = tmdb_helper.get_request_url(method='/search/movie', language='ko-KR', query=query)
         movies      = requests.get(request_url).json()
+        result      = []
         
-        result = [
-            {
+        for movie in movies.get('results',[]):
+            
+            movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie['id']), region='KR', language='ko')
+            movie_data_raw_data = requests.get(movie_data_request_url)
+            movie_data = movie_data_raw_data.json()
+            
+            result.append({
                 'movie_id'     : movie['id'],
                 'title'        : movie['title'],
                 'en_title'     : movie['original_title'],
-                'running_time' : '', #디테일 api 호출 필요,
-                'release_date' : movie['release_date'],
-                'country'      : '', #디테일 api호출 필요,
-                'poster'       : TMDB_IMAGE_URL+movie['poster_path'] if movie['poster_path'] else '' 
-            } for movie in movies['results']]
+                'running_time' : movie_data.get('runtime'),
+                'release_date' : movie.get('release_date', ''),
+                'country'      : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
+                'poster'       : TMDB_IMAGE_BASE_URL+movie['poster_path'] if movie['poster_path'] else '' 
+            })
         
         return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
   
