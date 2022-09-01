@@ -125,7 +125,7 @@ class MovieSearchView(APIView):
             movie_data = movie_data_raw_data.json()
             
             result.append({
-                'movie_id'     : movie['id'],
+                'id'     : movie['id'],
                 'title'        : movie['title'],
                 'en_title'     : movie['original_title'],
                 'running_time' : movie_data.get('runtime'),
