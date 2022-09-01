@@ -1,9 +1,8 @@
 from django.db import models
 
-class Platform(models.Model):
-    name      = models.CharField(max_length=100)
-    image_url = models.URLField(max_length=200, blank=True, null=True)
-    url       = models.URLField(max_length=200, blank=True, null=True)
-
+class CountryCode(models.Model):
+    iso_code = models.CharField(max_length=20)
+    name     = models.CharField(max_length=100)
+    
     class Meta:
-        db_table = 'platforms'
+        db_table = 'country_codes'
