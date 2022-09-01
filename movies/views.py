@@ -129,7 +129,7 @@ class MovieSearchView(APIView):
                 'en_title'     : movie['original_title'],
                 'running_time' : movie_data.get('runtime'),
                 'release_date' : movie.get('release_date', ''),
-                'country'      : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
+                'country'      : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != [] else '',
                 'poster'       : TMDB_IMAGE_BASE_URL+movie['poster_path'] if movie['poster_path'] else '' 
             })
         
