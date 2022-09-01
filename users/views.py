@@ -1,4 +1,4 @@
-from random import random, randrange
+import random
 import requests, jwt, datetime
 
 from django.shortcuts        import redirect
@@ -7,10 +7,13 @@ from django.http             import JsonResponse
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from users.models      import User, SocialPlatform, Group, ProfileImage, SocialToken
-from reviews.models    import Review
-from core.utils        import login_decorator
-from my_settings       import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+
+from users.models     import User, SocialPlatform, Group, ProfileImage, SocialToken
+from reviews.models   import Review
+from adminpage.models import Image
+from core.utils       import login_decorator
+from core.tmdb        import tmdb_helper
+from my_settings      import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, TMDB_IMAGE_BASE_URL
 
 
 #* 카카오 신규유저 테스트
@@ -267,17 +270,44 @@ class UserListView(APIView):
         
         return Response({'data': user_data}, status=200)
     
+# class LoginBackGroundView(APIView):
+#     def get(self, request):
+#         image_length = len(MovieImage.objects.all())
+#         movie_image  = MovieImage.objects.get(id=randrange(1, image_length+1))
+        
+#         data = {
+#             'movie_id'    : movie_image.movie.id,
+#             'title'       : movie_image.movie.title,
+#             'description' : movie_image.movie.description,
+#             'image_url'   : AWS_S3_URL+movie_image.image.image_url
+#         }
+        
+#         return JsonResponse({'data': data}, status=200)
+
+#tmdb
 class LoginBackGroundView(APIView):
     def get(self, request):
-        image_length = len(MovieImage.objects.all())
-        movie_image  = MovieImage.objects.get(id=randrange(1, image_length+1))
+        random_num             = random.randrange(1,100)
+        
+        image_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(random_num)+'/images')
+        image_data_raw_data    = requests.get(image_data_request_url)
+        image_data             = image_data_raw_data.json()
+        
+        while image_data.get('backdrops') == None or image_data.get('backdrops') == []:
+            random_num             += 101
+            image_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(random_num)+'/images')
+            image_data_raw_data    = requests.get(image_data_request_url)
+            image_data             = image_data_raw_data.json()
+        
+        movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(random_num), region='KR', language='ko')
+        movie_data_raw_data    = requests.get(movie_data_request_url)
+        movie_data             = movie_data_raw_data.json()
         
         data = {
-            'movie_id'    : movie_image.movie.id,
-            'title'       : movie_image.movie.title,
-            'description' : movie_image.movie.description,
-            'image_url'   : AWS_S3_URL+movie_image.image.image_url
+            'movie_id'    : random_num,
+            'title'       : movie_data.get('title'),
+            'description' : movie_data.get('overview'),
+            'image_url'   : TMDB_IMAGE_BASE_URL+image_data.get('backdrops')[0].get('file_path'),
         }
         
         return JsonResponse({'data': data}, status=200)
-      
