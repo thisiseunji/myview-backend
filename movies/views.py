@@ -1,4 +1,4 @@
-import random,requests
+import requests, random
 
 from django.http             import JsonResponse
 from django.views            import View
@@ -12,11 +12,13 @@ from django.db.models        import Q
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL
+from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, TMDB_IMAGE_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
 from movies.tmdb            import tmdb_helper
 
+
+## tmdb
 class MovieDetailView(APIView):
     def get(self, request, movie_id):
         # MOVIES / Get Details
@@ -72,7 +74,7 @@ class MovieDetailView(APIView):
             }
         
         return Response({'movie_info': movie_data}, status=200)
-        
+
 
 # class MovieReviewView(View):
 #     def get(self, request, movie_id):
@@ -88,28 +90,8 @@ class MovieDetailView(APIView):
 #             } for review in reviews]
         
 #         return JsonResponse({'message':'SUCCESS', 'result':reviews}, status=200)
-    
-# class SimpleSearchView(View):
-#     def get(self, request):
-#         movies = Movie.objects.all()
-#         latest = movies.order_by('-release_date', 'title', 'id')[:10]
-#         titles = []
-#         rank   = []
-        
-#         for movie in movies:
-#             titles.append({
-#                 'id'    : movie.id,
-#                 'title' : movie.title
-#             })
-        
-#         for movie in latest:
-#             rank.append({
-#                 'id'    : movie.id,
-#                 'title' : movie.title
-#             })
-        
-#         return JsonResponse({'message' : 'SUCCESS', 'rank' : rank, 'titles' : titles}, status=200)
-    
+
+
 # class MovieSearchView(View):
 #     def get(self, request):
 #         try:
@@ -138,6 +120,53 @@ class MovieDetailView(APIView):
 #         except Movie.DoesNotExist:
             
 #             return Response({'message': 'MOVIE_NOT_EXIST'}, status=400)
+
+
+#tmdb  
+# class SimpleSearchView(APIView):
+#     def get(self, request):
+#         request_url    = tmdb_helper.get_request_url(method='/movie/popular', language='ko-KR', region='KR')
+#         popular_movies = requests.get(request_url).json()
+        
+#         titles = []
+#         rank   = []
+        
+#         # 이 데이터를 제공하는 목적, '영화 검색'을 제공하는 것이 목적이라면, MovieSearchView를 이용할 수 있도록 할 것
+#         for movie in movies['result'][:10]:
+#             titles.append({
+#                 'id'    : movie.id,
+#                 'title' : movie.title
+#             })
+        
+#         for movie in popular_movies['results'][:10]:
+#             rank.append({
+#                 'id'    : movie['id'],
+#                 'title' : movie['title']
+#             })
+            
+#         return JsonResponse({'message':'SUCCESS', 'rank':rank}, status=200)
+
+
+# tmdb
+class MovieSearchView(APIView):
+    def get(self, request):
+        query       = request.GET.get('q')
+        request_url = tmdb_helper.get_request_url(method='/search/movie', language='ko-KR', query=query)
+        movies      = requests.get(request_url).json()
+        
+        result = [
+            {
+                'movie_id'     : movie['id'],
+                'title'        : movie['title'],
+                'en_title'     : movie['original_title'],
+                'running_time' : '', #디테일 api 호출 필요,
+                'release_date' : movie['release_date'],
+                'country'      : '', #디테일 api호출 필요,
+                'poster'       : TMDB_IMAGE_URL+movie['poster_path'] if movie['poster_path'] else '' 
+            } for movie in movies['results']]
+        
+        return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
+
 
 # class ActorDetailView(APIView):
 #     def get(self, request, actor_id):
@@ -183,7 +212,7 @@ class MovieDetailView(APIView):
         
 #         except Actor.DoesNotExist:
 #             return Response({'message': 'ACTOR_NOT_EXIST'}, status=400)
-        
+
 #     @transaction.atomic(using='default')
 #     def post(self, request):
 #         try:
@@ -236,7 +265,7 @@ class MovieDetailView(APIView):
         
 #         except ValueError:
 #             return Response({'message': 'VALUE_ERROR'}, status=400)
-        
+
 #     def patch(self, request):
 #         data         = request.data
 #         actor_id     = data['actor_id']
@@ -276,7 +305,6 @@ class MovieDetailView(APIView):
 #         } for actor in actors]
         
 #         return Response({'actor_list': actor_list}, status=200)
-    
 
 # class ActorIntimacyView(APIView):
 #     @login_decorator
@@ -290,8 +318,8 @@ class MovieDetailView(APIView):
 #             } for review in Review.objects.filter(user_id=user)]
         
 #         return Response({'data': data}, status=200)
-    
-    
+
+
 # class MovieListView(APIView):
 #     def get(self, request):
 #         movies = Movie.objects.all()
