@@ -12,10 +12,10 @@ from django.db.models        import Q
 from users.models           import User
 from reviews.models         import Review
 from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, TMDB_IMAGE_URL
+from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
-from movies.tmdb            import tmdb_helper
+from core.tmdb              import tmdb_helper
 
 
 ## tmdb
