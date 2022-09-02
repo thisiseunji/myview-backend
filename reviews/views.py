@@ -287,7 +287,7 @@ class ReviewTopThreeView(View):
                         'rating'    : reviews[i].rating,
                         'movie'     : {
                             'id'     : reviews[i].movie_id,
-                            'poster' : TMDB_IMAGE_BASE_URL+movie.get('backdrop_path') if movie.get('backdrop_path') != None else movie.get('poster_path', ''),
+                            'poster' : TMDB_IMAGE_BASE_URL+movie.get('backdrop_path') if movie.get('backdrop_path') != None else TMDB_IMAGE_BASE_URL+movie.get('poster_path', ''),
                             'title'  : movie.get('title','')
                         }
                     }
