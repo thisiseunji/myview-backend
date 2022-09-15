@@ -13,10 +13,10 @@ urlpatterns = [
     path('/popular', MoviePopularView.as_view()),
 
     #영화 검색
-    path('', MovieSearchView.as_view()),   
+    path('', MovieSearchView.as_view()),
     
     # 영화배우 상세페이지
-    path('/actor/<int:actor_id>', ActorDetailView.as_view()),
+    path('/actor/detail', ActorDetailView.as_view()),
     
     # # 영화배우 리스트
     # path('/actor/list', ActorListView.as_view()),
