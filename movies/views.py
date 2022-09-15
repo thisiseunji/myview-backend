@@ -1,7 +1,4 @@
-#movies.views.py
-
-from dataclasses import replace
-import requests, random
+import requests, jwt
 
 from django.http             import JsonResponse
 from django.views            import View
@@ -9,8 +6,8 @@ from rest_framework.views    import APIView
 from rest_framework.response import Response
 
 from reviews.models         import Review
-from users.models           import ProfileImage
-from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL
+from users.models           import ProfileImage, User
+from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, SECRET_KEY, ALGORITHM
 from core.storages          import s3_client, FileHander
 from core.utils             import login_decorator
 from core.tmdb              import tmdb_helper
@@ -150,31 +147,85 @@ class MovieSearchView(APIView):
         
 #         return Response({'data': data}, status=200)
 
-
 class ActorDetailView(APIView):
-    def get(self, request, actor_id):
+    def get(self, request):
+        actor_id = request.GET.get('actor_id')
+        page     = int(request.GET.get('page', 0))
+        limit    = int(request.GET.get('limit', 8))
+        offset   = (page*limit)
+        
         # PERSONS / Get Details
-        person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id))
-        person_data_raw_data = requests.get(person_data_request_url)
-        actor = person_data_raw_data.json()
+        person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id), language='KO')
+        person_data_raw_data    = requests.get(person_data_request_url)
+        actor                   = person_data_raw_data.json()
         
         # PERSONS / Get Movie Credits
-        person_movie_credits_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id)+'/movie_credits')
-        person_movie_credits_data_raw_data = requests.get(person_movie_credits_data_request_url)
-        actor_movie = person_movie_credits_data_raw_data.json()
-
+        person_movie_credits_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id)+'/movie_credits', language='KO')
+        person_movie_credits_data_raw_data    = requests.get(person_movie_credits_data_request_url)
+        actor_movie                           = person_movie_credits_data_raw_data.json()
+        
+        total_page = -1
+        
+        if actor_movie.get('success') == False:
+            actor_data = {
+                'total_page' : total_page,
+                'name'       : actor.get('name'),
+                'image_url'  : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
+                'country'    : actor.get('place_of_birth'),
+                'starring_list' : []
+            }
+            return Response({'actor_info': actor_data}, status=200)
+                
+        total_page = len(actor_movie['cast'])//limit-1 if len(actor_movie['cast'])%limit == 0 else (len(actor_movie['cast'])//limit)
+        
+        if 'Authorization' in request.headers:
+            try:
+                token               = request.headers.get("Authorization")
+                payload             = jwt.decode(token, SECRET_KEY, ALGORITHM)  
+                user                = User.objects.get(id=payload["id"])
+                movies_with_reviews = Review.objects.filter(user=user).values('movie_id').values()
+                
+                actor_data = {
+                    'total_page' : total_page,
+                    'name'       : actor.get('name'),
+                    'image_url'  : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
+                    'country'    : actor.get('place_of_birth'),
+                    'starring_list' : [{
+                        'id'                  : movie.get('id'),
+                        'title'               : movie.get('title'),
+                        'release'             : movie.get('release_date').split("-")[0],
+                        'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
+                        'role_name'           : movie.get('character'),
+                        'ratings'             : Review.objects.get(user=user,movie_id=movie.get('id')).rating if movie.get('id') in movies_with_reviews else round(float(movie.get('vote_average'))/2,0),
+                        'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', '자료없음'),
+                        } for movie in actor_movie.get('cast')[offset:offset+limit]]
+                }
+                
+                return Response({'actor_info':actor_data}, status=200)
+            
+            except User.DoesNotExist:                                           
+                pass
+            
+            except jwt.exceptions.ExpiredSignatureError:
+                pass
+            
+            except jwt.exceptions.DecodeError:                                     
+                pass
+                
         actor_data = {
-            'name'      : actor.get('name'),
-            'image_url' : TMDB_IMAGE_BASE_URL+actor.get('profile_path'),
-            'country'   : actor.get('place_of_birth'),
+            'total_page' : total_page,
+            'name'       : actor.get('name'),
+            'image_url'  : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
+            'country'    : actor.get('place_of_birth'),
             'starring_list' : [{
+                'id'                  : movie.get('id'),
                 'title'               : movie.get('title'),
                 'release'             : movie.get('release_date').split("-")[0],
                 'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
                 'role_name'           : movie.get('character'),
-                'ratings'             : 3, #미구현
-                'platform'            : '미구현',
-                } for movie in actor_movie.get('cast')]
+                'ratings'             : round(float(movie.get('vote_average'))/2,0),
+                'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', '자료없음'),
+                } for movie in actor_movie.get('cast')[offset:offset+limit]]
         }
-    
+
         return Response({'actor_info': actor_data}, status=200)
