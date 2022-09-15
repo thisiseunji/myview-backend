@@ -117,12 +117,12 @@ class MovieSearchView(APIView):
         
         for movie in movies.get('results',[]):
             
-            movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie['id']), region='KR', language='ko')
+            movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie['id']), region='KR', language='ko-KR')
             movie_data_raw_data = requests.get(movie_data_request_url)
             movie_data = movie_data_raw_data.json()
             
             result.append({
-                'id'     : movie['id'],
+                'id'           : movie['id'],
                 'title'        : movie['title'],
                 'en_title'     : movie['original_title'],
                 'running_time' : movie_data.get('runtime'),
@@ -133,6 +133,28 @@ class MovieSearchView(APIView):
         
         return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
 
+#tmdb
+class ActorSearchView(APIView):
+    def get(self, request):
+        query       = request.GET.get('q')
+        request_url = tmdb_helper.get_request_url(method='/search/person', language='ko-KR', query=query)
+        people      = requests.get(request_url).json()
+        result      = []
+        
+        for person in people.get('results',[]):
+            
+            person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(person['id']), language='ko-KR', region='KR')
+            person_data_raw_data = requests.get(person_data_request_url)
+            person_data = person_data_raw_data.json()
+            
+            result.append({
+                'id'            : person['id'],
+                'name'          : person_data.get('name', ''),
+                'profile_image' : TMDB_IMAGE_BASE_URL+person.get('profile_path') if person.get('profile_path') != None else '',
+                'known_for'     : [{'id':i.get('id'), 'title': i.get('title')} for i in person.get('known_for',[])[:2]]
+            })
+        
+        return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
 
 # class ActorIntimacyView(APIView):
 #     @login_decorator
@@ -155,12 +177,12 @@ class ActorDetailView(APIView):
         offset   = (page*limit)
         
         # PERSONS / Get Details
-        person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id), language='KO')
+        person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id), language='ko-KR')
         person_data_raw_data    = requests.get(person_data_request_url)
         actor                   = person_data_raw_data.json()
         
         # PERSONS / Get Movie Credits
-        person_movie_credits_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id)+'/movie_credits', language='KO')
+        person_movie_credits_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id)+'/movie_credits', language='ko-KR')
         person_movie_credits_data_raw_data    = requests.get(person_movie_credits_data_request_url)
         actor_movie                           = person_movie_credits_data_raw_data.json()
         
@@ -176,7 +198,7 @@ class ActorDetailView(APIView):
             }
             return Response({'actor_info': actor_data}, status=200)
                 
-        total_page = len(actor_movie['cast'])//limit-1 if len(actor_movie['cast'])%limit == 0 else (len(actor_movie['cast'])//limit)
+        total_page = (len(actor_movie['cast'])//limit)-1 if len(actor_movie['cast'])%limit == 0 else (len(actor_movie['cast'])//limit)
         
         if 'Authorization' in request.headers:
             try:
@@ -197,7 +219,7 @@ class ActorDetailView(APIView):
                         'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
                         'role_name'           : movie.get('character'),
                         'ratings'             : Review.objects.get(user=user,movie_id=movie.get('id')).rating if movie.get('id') in movies_with_reviews else round(float(movie.get('vote_average'))/2,0),
-                        'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', '자료없음'),
+                        'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
                         } for movie in actor_movie.get('cast')[offset:offset+limit]]
                 }
                 
@@ -224,7 +246,7 @@ class ActorDetailView(APIView):
                 'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
                 'role_name'           : movie.get('character'),
                 'ratings'             : round(float(movie.get('vote_average'))/2,0),
-                'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', '자료없음'),
+                'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
                 } for movie in actor_movie.get('cast')[offset:offset+limit]]
         }
 
