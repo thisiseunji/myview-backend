@@ -13,19 +13,33 @@ from core.utils             import login_decorator
 from core.tmdb              import tmdb_helper
 from datetime               import datetime
 
+basic_img = 'https://pixabay.com/ko/photos/%eb%a7%90-%ec%a2%85%eb%a7%88-%ea%b0%88%ea%b8%b0-%ed%8f%ac%ec%9c%a0-%eb%8f%99%eb%ac%bc-5625922/'
 
 #tmdb 수정
 class MovieDetailView(APIView):
-    def get(self, request, movie_id):
+    def get(self, request):
+        movie_id = request.GET.get('movie_id')
+        page     = int(request.GET.get('page', 0))
+        limit    = int(request.GET.get('limit', 8))
+        offset   = page*limit
+        
+        total_page = -1
+        
         # MOVIES / Get Details
         movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id), region='KR', language='ko')
         movie_data_raw_data = requests.get(movie_data_request_url)
         movie_data = movie_data_raw_data.json()
         
+        if movie_data.get('id') == None :
+            return Response('{message : INVALID_DATA}', status=404) 
+        
         # MOVIES / Get credits
         actor_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/credits', language='ko')
         actor_data_raw_data = requests.get(actor_data_request_url)
         actor_data = actor_data_raw_data.json()
+        
+        if actor_data['cast']:
+           total_page = (len(actor_data['cast'])//limit)-1 if len(actor_data['cast'])%limit == 0 else (len(actor_data['cast'])//limit)
         
         # MOVIES / Get Images
         image_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/images')
@@ -41,9 +55,6 @@ class MovieDetailView(APIView):
         provider_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/watch/providers')
         provider_data_raw_data = requests.get(provider_data_request_url)
         provider_data = provider_data_raw_data.json()
-        
-        if movie_data.get('id') == None :
-            return Response('{message : INVALID_DATA}', status=404)
         
         movie_data = {
             'id'                  : movie_data.get('id'),
@@ -62,13 +73,13 @@ class MovieDetailView(APIView):
             'actor'               : [{
                 'id'        : actor.get('id'),
                 'name'      : actor.get('name'),
-                'image'     : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
+                'image'     : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else 'basic_img',
                 'role'      : actor.get('known_for_department'),
                 'role_name' : actor.get('character'),
-                } for actor in actor_data.get('cast')] if actor_data.get('cast') != None else '',  
+                } for actor in actor_data.get('cast')][offset:offset+limit] if actor_data.get('cast') != None else '',  
             'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie_data.get('poster_path') if movie_data.get('poster_path') != None else '',
-            'image_url'           : [TMDB_IMAGE_BASE_URL+image.get('file_path') for image in image_data.get('backdrops')] if image_data.get('backdrops') != None else '',
-            'video_url'           : [TMDB_VIDEO_BASE_URL+video.get('key') for video in video_data.get('results')] if video_data.get('results') != None else '',
+            'image_url'           : [TMDB_IMAGE_BASE_URL+image.get('file_path') for image in image_data.get('backdrops')][:20] if image_data.get('backdrops') != None else '',
+            'video_url'           : [TMDB_VIDEO_BASE_URL+video.get('key') for video in video_data.get('results')][:4] if video_data.get('results') != None else '',
             }
         
         return Response({'movie_info': movie_data}, status=200)
@@ -174,7 +185,7 @@ class ActorDetailView(APIView):
         actor_id = request.GET.get('actor_id')
         page     = int(request.GET.get('page', 0))
         limit    = int(request.GET.get('limit', 8))
-        offset   = (page*limit)
+        offset   = page*limit
         
         # PERSONS / Get Details
         person_data_request_url = tmdb_helper.get_request_url(method='/person/'+str(actor_id), language='ko-KR')
