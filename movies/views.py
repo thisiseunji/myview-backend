@@ -57,6 +57,7 @@ class MovieDetailView(APIView):
         provider_data = provider_data_raw_data.json()
         
         movie_data = {
+            'total_page'          : total_page,
             'id'                  : movie_data.get('id'),
             'title'               : movie_data.get('title'),
             'en_title'            : movie_data.get('original_title'),
@@ -216,7 +217,7 @@ class ActorDetailView(APIView):
                 token               = request.headers.get("Authorization")
                 payload             = jwt.decode(token, SECRET_KEY, ALGORITHM)  
                 user                = User.objects.get(id=payload["id"])
-                movies_with_reviews = Review.objects.filter(user=user).values('movie_id').values()
+                movies_with_reviews = [movie['movie_id'] for movie in Review.objects.filter(user=user).values('movie_id')]
                 
                 actor_data = {
                     'total_page' : total_page,
@@ -229,9 +230,9 @@ class ActorDetailView(APIView):
                         'release'             : movie.get('release_date').split("-")[0],
                         'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
                         'role_name'           : movie.get('character'),
-                        'ratings'             : Review.objects.get(user=user,movie_id=movie.get('id')).rating if movie.get('id') in movies_with_reviews else round(float(movie.get('vote_average'))/2,0),
+                        'ratings'             : {'review':True, 'rating':Review.objects.get(user=user,movie_id=movie.get('id')).rating} if str(movie.get('id')) in movies_with_reviews else {'review':False, 'rating':round(float(movie.get('vote_average'))/2,0)},
                         'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
-                        } for movie in actor_movie.get('cast')[offset:offset+limit]]
+                        } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]]
                 }
                 
                 return Response({'actor_info':actor_data}, status=200)
@@ -258,7 +259,7 @@ class ActorDetailView(APIView):
                 'role_name'           : movie.get('character'),
                 'ratings'             : round(float(movie.get('vote_average'))/2,0),
                 'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
-                } for movie in actor_movie.get('cast')[offset:offset+limit]]
+                } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]]
         }
 
         return Response({'actor_info': actor_data}, status=200)
