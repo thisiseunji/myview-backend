@@ -162,7 +162,8 @@ class ActorSearchView(APIView):
                 'id'            : person['id'],
                 'name'          : person_data.get('name', ''),
                 'profile_image' : TMDB_IMAGE_BASE_URL+person.get('profile_path') if person.get('profile_path') != None else '',
-                'known_for'     : [{'id':i.get('id'), 'title': i.get('title')} for i in person.get('known_for',[])[:2]]
+                'known_for'     : [{'id':i.get('id'), 'title': i.get('title')} for i in person.get('known_for',[])[:2]],
+                'department'    : person.get('known_for_department')
             })
         
         return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
