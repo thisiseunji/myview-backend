@@ -118,7 +118,6 @@ class MoviePopularView(APIView):
             
         return JsonResponse({'message':'SUCCESS', 'rank':rank}, status=200)
 
-
 # tmdb
 class MovieSearchView(APIView):
     def get(self, request):
@@ -225,14 +224,23 @@ class ActorDetailView(APIView):
                     'image_url'  : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
                     'country'    : actor.get('place_of_birth'),
                     'starring_list' : [{
-                        'id'                  : movie.get('id'),
-                        'title'               : movie.get('title'),
-                        'release'             : movie.get('release_date').split("-")[0],
-                        'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
-                        'role_name'           : movie.get('character'),
-                        'ratings'             : {'review':True, 'rating':Review.objects.get(user=user,movie_id=movie.get('id')).rating} if str(movie.get('id')) in movies_with_reviews else {'review':False, 'rating':round(float(movie.get('vote_average'))/2,0)},
-                        'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
-                        } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]]
+                        'id'                   : movie.get('id'),
+                        'title'                : movie.get('title'),
+                        'release'              : movie.get('release_date').split("-")[0],
+                        'thumbnail_image_url'  : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
+                        'role_name'            : movie.get('character'),
+                        'ratings'              : {'review':True, 'rating':Review.objects.get(user=user,movie_id=movie.get('id')).rating} if str(movie.get('id')) in movies_with_reviews else {'review':False, 'rating':round(float(movie.get('vote_average'))/2,0)},
+                        'platform'             : TMDB_IMAGE_BASE_URL + requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy')[0].get('logo_path') \
+                                                 if requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results') != None \
+                                                     and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR') != None \
+                                                     and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy') != None \
+                                                     and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy')[0].get('logo_path') != None
+                                                 else '',
+                        'background_image_url' : TMDB_IMAGE_BASE_URL + requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')[0].get('file_path') \
+                                                 if len(requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')) > 0 and \
+                                                    requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')[0].get('file_path') != None
+                                                 else ''
+                        } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]],
                 }
                 
                 return Response({'actor_info':actor_data}, status=200)
@@ -252,13 +260,22 @@ class ActorDetailView(APIView):
             'image_url'  : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else '',
             'country'    : actor.get('place_of_birth'),
             'starring_list' : [{
-                'id'                  : movie.get('id'),
-                'title'               : movie.get('title'),
-                'release'             : movie.get('release_date').split("-")[0],
-                'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
-                'role_name'           : movie.get('character'),
-                'ratings'             : round(float(movie.get('vote_average'))/2,0),
-                'platform'            : requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json()['results'].get('KR', 'NO_DATA'),
+                'id'                   : movie.get('id'),
+                'title'                : movie.get('title'),
+                'release'              : movie.get('release_date').split("-")[0],
+                'thumbnail_image_url'  : TMDB_IMAGE_BASE_URL+movie.get('poster_path') if movie.get('poster_path') != None else '',
+                'role_name'            : movie.get('character'),
+                'ratings'              : round(float(movie.get('vote_average'))/2,0),
+                'platform'             : TMDB_IMAGE_BASE_URL + requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy')[0].get('logo_path') \
+                                         if requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results') != None \
+                                             and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR') != None \
+                                             and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy') != None \
+                                             and requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/watch/providers')).json().get('results').get('KR').get('buy')[0].get('logo_path') != None
+                                         else '',
+                'background_image_url' : TMDB_IMAGE_BASE_URL + requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')[0].get('file_path') \
+                                        if len(requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')) > 0 and \
+                                            requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')[0].get('file_path') != None
+                                        else ''
                 } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]]
         }
 
