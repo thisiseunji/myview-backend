@@ -8,10 +8,7 @@ from rest_framework.response import Response
 from reviews.models         import Review
 from users.models           import ProfileImage, User
 from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, SECRET_KEY, ALGORITHM
-from core.storages          import s3_client, FileHander
-from core.utils             import login_decorator
 from core.tmdb              import tmdb_helper
-from datetime               import datetime
 
 basic_img = 'https://pixabay.com/ko/photos/%eb%a7%90-%ec%a2%85%eb%a7%88-%ea%b0%88%ea%b8%b0-%ed%8f%ac%ec%9c%a0-%eb%8f%99%eb%ac%bc-5625922/'
 
@@ -117,6 +114,29 @@ class MoviePopularView(APIView):
             })
             
         return JsonResponse({'message':'SUCCESS', 'rank':rank}, status=200)
+    
+class MovieLatestView(APIView):
+    def get(self, request):
+        request_url   = tmdb_helper.get_request_url(method='/movie/now_playing', language='ko-KR', region='KR')
+        latest_movies = requests.get(request_url).json()
+        latest        = []
+        
+        for movie in sorted(latest_movies.get('results'), key=lambda x: x.get('popularity'), reverse=True)[:10]:
+            
+            movie_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie['id']), region='KR', language='ko-KR')
+            movie_data_raw_data    = requests.get(movie_data_request_url)
+            movie_data             = movie_data_raw_data.json()
+            
+            latest.append( {
+                'id'          : movie['id'],
+                'title'       : movie['title'],
+                'poster'      : TMDB_IMAGE_BASE_URL + movie['poster_path'],
+                'relese_date' : movie['release_date'].split('-')[0],
+                'ratings'     : movie['vote_average'],
+                'country'     : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != [] else '',
+            })
+        
+        return JsonResponse({'message':'SUCCESS', 'latest':latest}, status=200)
 
 # tmdb
 class MovieSearchView(APIView):
