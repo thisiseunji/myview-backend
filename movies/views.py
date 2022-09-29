@@ -119,7 +119,7 @@ class MovieLatestView(APIView):
     def get(self, request):
         request_url   = tmdb_helper.get_request_url(method='/movie/now_playing', language='ko-KR', region='KR')
         latest_movies = requests.get(request_url).json()
-        latest        = []
+        result        = []
         
         for movie in sorted(latest_movies.get('results'), key=lambda x: x.get('popularity'), reverse=True)[:10]:
             
@@ -127,7 +127,7 @@ class MovieLatestView(APIView):
             movie_data_raw_data    = requests.get(movie_data_request_url)
             movie_data             = movie_data_raw_data.json()
             
-            latest.append( {
+            result.append( {
                 'id'           : movie['id'],
                 'title'        : movie['title'],
                 'poster'       : TMDB_IMAGE_BASE_URL + movie['poster_path'],
@@ -136,7 +136,7 @@ class MovieLatestView(APIView):
                 'country'      : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != [] else '',
             })
         
-        return JsonResponse({'message':'SUCCESS', 'latest':latest}, status=200)
+        return JsonResponse({'message':'SUCCESS', 'result':result}, status=200)
 
 # tmdb
 class MovieSearchView(APIView):
