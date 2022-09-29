@@ -128,12 +128,12 @@ class MovieLatestView(APIView):
             movie_data             = movie_data_raw_data.json()
             
             latest.append( {
-                'id'          : movie['id'],
-                'title'       : movie['title'],
-                'poster'      : TMDB_IMAGE_BASE_URL + movie['poster_path'],
-                'relese_date' : movie['release_date'].split('-')[0],
-                'ratings'     : movie['vote_average'],
-                'country'     : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != [] else '',
+                'id'           : movie['id'],
+                'title'        : movie['title'],
+                'poster'       : TMDB_IMAGE_BASE_URL + movie['poster_path'],
+                'release_date' : movie['release_date'],
+                'ratings'      : movie['vote_average'],
+                'country'      : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != [] else '',
             })
         
         return JsonResponse({'message':'SUCCESS', 'latest':latest}, status=200)
