@@ -162,24 +162,11 @@ class ActorSearchView(APIView):
                 'id'            : person['id'],
                 'name'          : person_data.get('name', ''),
                 'profile_image' : TMDB_IMAGE_BASE_URL+person.get('profile_path') if person.get('profile_path') != None else '',
-                'known_for'     : [{'id':i.get('id'), 'title': i.get('title')} for i in person.get('known_for',[])[:2]],
+                'known_for'     : [{'id':i.get('id'), 'title': i.get('title','')} for i in person.get('known_for',[])[:2]],
                 'department'    : person.get('known_for_department')
             })
         
         return JsonResponse({'message':'SUCCESS', 'result':result}, status = 200)
-
-# class ActorIntimacyView(APIView):
-#     @login_decorator
-#     def get(self, request, actor_id):
-        
-#         user = request.user
-        
-#         data = [{
-#             'movie_id': review.movie_id,
-#             'rating' : review.rating,
-#             } for review in Review.objects.filter(user_id=user)]
-        
-#         return Response({'data': data}, status=200)
 
 class ActorDetailView(APIView):
     def get(self, request):
@@ -199,7 +186,7 @@ class ActorDetailView(APIView):
         actor_movie                           = person_movie_credits_data_raw_data.json()
         
         total_page = -1
-        
+                
         if actor_movie.get('success') == False:
             actor_data = {
                 'total_page' : total_page,
@@ -209,15 +196,17 @@ class ActorDetailView(APIView):
                 'starring_list' : []
             }
             return Response({'actor_info': actor_data}, status=200)
-                
-        total_page = (len(actor_movie['cast'])//limit)-1 if len(actor_movie['cast'])%limit == 0 else (len(actor_movie['cast'])//limit)
         
-        if 'Authorization' in request.headers:
+        total_movie = len(actor_movie['cast'])      
+        total_page  = ((total_movie)//limit)-1 if total_movie%limit == 0 else (total_movie//limit)
+        
+        if 'Authorization' in request.headers: #로그인 된 상태
             try:
                 token               = request.headers.get("Authorization")
                 payload             = jwt.decode(token, SECRET_KEY, ALGORITHM)  
                 user                = User.objects.get(id=payload["id"])
                 movies_with_reviews = [movie['movie_id'] for movie in Review.objects.filter(user=user).values('movie_id')]
+                intimacy            = 0
                 
                 actor_data = {
                     'total_page' : total_page,
@@ -241,8 +230,16 @@ class ActorDetailView(APIView):
                                                  if len(requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')) > 0 and \
                                                     requests.get(tmdb_helper.get_request_url(method='/movie/'+str(movie.get('id'))+'/images')).json().get('backdrops')[0].get('file_path') != None
                                                  else ''
-                        } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]],
+                        } for movie in sorted(actor_movie.get('cast'), key=lambda x:x.get('release_date'), reverse=True)[offset:offset+limit]],                
                 }
+                movie_ids = [actor.get('id') for actor in actor_movie.get('cast')]
+                
+                for review_id in movies_with_reviews:
+                    if int(review_id) in movie_ids:
+                        intimacy += 1
+                
+                actor_data['intimacy']    = intimacy
+                actor_data['total_movie'] = total_movie
                 
                 return Response({'actor_info':actor_data}, status=200)
             
