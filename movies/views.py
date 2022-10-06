@@ -54,7 +54,6 @@ class MovieDetailView(APIView):
         provider_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/watch/providers')
         provider_data_raw_data = requests.get(provider_data_request_url)
         provider_data = provider_data_raw_data.json()
-        print(provider_data)
         
         movie_data = {
             'total_page'          : total_page,
@@ -66,12 +65,12 @@ class MovieDetailView(APIView):
             'age'                 : movie_data.get('adult'),
             'ratings'             : movie_data.get('vote_average'),
             'release_date'        : movie_data.get('release_date'),
-            'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
+            'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != (None or []) else '',
             'category'            : '미구현 제공여부 확인중',
             'genre'               : [{
                 'name': genre.get('name'),
                 'color_code' : Genre.objects.get(id=genre.get('id')).color_code,
-                }for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
+                }for genre in movie_data.get('genres')] if movie_data.get('genres') != (None or []) else '',
             'platform_name'       : [provider.get('provider_name') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'platform_logo_image' : [TMDB_IMAGE_BASE_URL+provider.get('logo_path') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'actor'               : [{
