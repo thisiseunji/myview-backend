@@ -6,3 +6,11 @@ class CountryCode(models.Model):
     
     class Meta:
         db_table = 'country_codes'
+        
+class Genre(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=100)
+    color_code = models.CharField(max_length=100)
+    
+    class Meta:
+        db_table = 'genres'
