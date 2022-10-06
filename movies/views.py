@@ -1,3 +1,4 @@
+from random import randrange
 import requests, jwt
 
 from django.http             import JsonResponse
@@ -5,7 +6,7 @@ from django.views            import View
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from reviews.models         import Review
+from reviews.models         import ColorCode, Review
 from users.models           import ProfileImage, User
 from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, SECRET_KEY, ALGORITHM
 from core.tmdb              import tmdb_helper
@@ -28,7 +29,7 @@ class MovieDetailView(APIView):
         movie_data = movie_data_raw_data.json()
         
         if movie_data.get('id') == None :
-            return Response('{message : INVALID_DATA}', status=404) 
+            return Response('{message : INVALID_DATA}', status=404)
         
         # MOVIES / Get credits
         actor_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/credits', language='ko')
@@ -53,6 +54,9 @@ class MovieDetailView(APIView):
         provider_data_raw_data = requests.get(provider_data_request_url)
         provider_data = provider_data_raw_data.json()
         
+        color_code = list(ColorCode.objects.all())
+        color_code_len = len(color_code)
+        
         movie_data = {
             'total_page'          : total_page,
             'id'                  : movie_data.get('id'),
@@ -65,7 +69,10 @@ class MovieDetailView(APIView):
             'release_date'        : movie_data.get('release_date'),
             'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != None else '',
             'category'            : '미구현 제공여부 확인중',
-            'genre'               : [genre.get('name') for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
+            'genre'               : [{
+                'name': genre.get('name'),
+                'color_code' : color_code[randrange(1,color_code_len)].color_code
+                }for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
             'platform_name'       : [provider.get('provider_name') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'platform_logo_image' : [TMDB_IMAGE_BASE_URL+provider.get('logo_path') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'actor'               : [{
