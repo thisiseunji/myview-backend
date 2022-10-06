@@ -6,10 +6,11 @@ from django.views            import View
 from rest_framework.views    import APIView
 from rest_framework.response import Response
 
-from reviews.models         import ColorCode, Review
-from users.models           import ProfileImage, User
-from my_settings            import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, SECRET_KEY, ALGORITHM
-from core.tmdb              import tmdb_helper
+from movies.models           import Genre
+from reviews.models          import Review
+from users.models            import ProfileImage, User
+from my_settings             import AWS_S3_URL, TMDB_IMAGE_BASE_URL, TMDB_VIDEO_BASE_URL, SECRET_KEY, ALGORITHM
+from core.tmdb               import tmdb_helper
 
 basic_img = 'https://pixabay.com/ko/photos/%eb%a7%90-%ec%a2%85%eb%a7%88-%ea%b0%88%ea%b8%b0-%ed%8f%ac%ec%9c%a0-%eb%8f%99%eb%ac%bc-5625922/'
 
@@ -53,9 +54,7 @@ class MovieDetailView(APIView):
         provider_data_request_url = tmdb_helper.get_request_url(method='/movie/'+str(movie_id)+'/watch/providers')
         provider_data_raw_data = requests.get(provider_data_request_url)
         provider_data = provider_data_raw_data.json()
-        
-        color_code = list(ColorCode.objects.all())
-        color_code_len = len(color_code)
+        print(provider_data)
         
         movie_data = {
             'total_page'          : total_page,
@@ -71,7 +70,7 @@ class MovieDetailView(APIView):
             'category'            : '미구현 제공여부 확인중',
             'genre'               : [{
                 'name': genre.get('name'),
-                'color_code' : color_code[randrange(color_code_len)].color_code
+                'color_code' : Genre.objects.get(id=genre.get('id')).color_code,
                 }for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
             'platform_name'       : [provider.get('provider_name') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'platform_logo_image' : [TMDB_IMAGE_BASE_URL+provider.get('logo_path') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',

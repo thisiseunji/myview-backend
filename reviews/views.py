@@ -1,4 +1,3 @@
-from turtle import color
 import requests
 
 from random               import randrange
@@ -11,7 +10,7 @@ from core.utils       import login_decorator
 from core.storages    import FileHander, s3_client
 from core.tmdb        import tmdb_helper
 from adminpage.models import Image
-from movies.models import Genre
+from movies.models    import Genre
 from reviews.models   import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models     import User
 from my_settings      import AWS_S3_URL, TMDB_IMAGE_BASE_URL
@@ -43,8 +42,7 @@ class ReviewView(APIView):
                 'tags'          : [
                     {
                         'tag'   : review_tag.tag.name, 
-                        #'color' : review_tag.tag.color_code
-                        'color' : ColorCode.objects.get(id=randrange(1,4+1)).color_code
+                        'color' : ColorCode.objects.get(id=randrange(1,20)).color_code
                     } for review_tag in ReviewTag.objects.filter(review=review)],
                 'movie'         : {
                     'id'       : movie['id'],
@@ -239,9 +237,8 @@ class ReviewListView(View):
         try:
             user    = request.user
             reviews = User.objects.get(id=user.id).review_set.all().order_by('-updated_at')
-            color_code = ColorCode.objects.all()
-            color_code_len = len(color_code)
             result = []
+            
             for review in reviews:
                 request_url = tmdb_helper.get_request_url(method=f'/movie/{review.movie_id}', language='KO')
                 movie = requests.get(request_url).json()
