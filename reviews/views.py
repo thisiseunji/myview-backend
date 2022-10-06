@@ -11,6 +11,7 @@ from core.utils       import login_decorator
 from core.storages    import FileHander, s3_client
 from core.tmdb        import tmdb_helper
 from adminpage.models import Image
+from movies.models import Genre
 from reviews.models   import ColorCode, Place, ReviewImage, ReviewPlace, Tag, Review, ReviewTag
 from users.models     import User
 from my_settings      import AWS_S3_URL, TMDB_IMAGE_BASE_URL
@@ -257,7 +258,7 @@ class ReviewListView(View):
                         'country'  : movie['production_countries'][0]['name'],
                         'genre'    : [{
                                 'name' : genre['name'],
-                                'color_code' : color_code[randrange(color_code_len)].color_code
+                                'color_code' : Genre.objects.get(id=genre['id']).color_code
                             } for genre in movie['genres']],
                         'age'      : movie['adult'],
                         'running_time' : movie['runtime']
