@@ -71,7 +71,7 @@ class MovieDetailView(APIView):
             'category'            : '미구현 제공여부 확인중',
             'genre'               : [{
                 'name': genre.get('name'),
-                'color_code' : color_code[randrange(1,color_code_len)].color_code
+                'color_code' : color_code[randrange(color_code_len)].color_code
                 }for genre in movie_data.get('genres')] if movie_data.get('genres') != None else '',
             'platform_name'       : [provider.get('provider_name') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
             'platform_logo_image' : [TMDB_IMAGE_BASE_URL+provider.get('logo_path') for provider in provider_data.get('results').get('KR').get('buy')] if provider_data.get('results') != None and provider_data.get('results').get('KR') != None and provider_data.get('results').get('KR').get('buy') != None else '',
