@@ -2,7 +2,7 @@ import jwt
 
 from unittest.mock import MagicMock, patch
 from django.test   import TestCase, Client
-from reviews.models import Review
+from reviews.models import ColorCode, Review
 
 from users.models import SocialPlatform, User, Group
 from my_settings  import SECRET_KEY, ALGORITHM
@@ -96,7 +96,9 @@ class MockMovieResponse:
         }
         return json
 
-@patch('reviews.views.requests.get', return_value=MockMovieResponse)
+class MockS3UploadImageUrl:
+    text = 'https://mblogthumb-phinf.pstatic.net/MjAxOTEwMTFfNjEg/MDAxNTcwNzg1ODM3Nzc0.zxDXm20VlPdQv8GQi9LWOdPwkqoBdiEmf8aBTWTsPF8g.FqMQTiF6ufydkQxrLBgET3kNYAyyKGJTWTyi1qd1-_Ag.PNG.kkson50/sample_images_01.png?type=w800'
+
 class ReviewTest(TestCase):
     mixDiff = None
     
@@ -136,18 +138,37 @@ class ReviewTest(TestCase):
         cls.header = {'HTTP_Authorization': cls.token}
         cls.payload = jwt.decode(cls.token, SECRET_KEY, algorithms=ALGORITHM)
 
-    client = Client()
-
-    def test_review_get_success(self, mocked_requests):
+        cls.color_code = [
+            ColorCode(id=1,  color_code='#af4448'),
+            ColorCode(id=2,  color_code='#ba2d65'),
+            ColorCode(id=3,  color_code='#883997'),
+            ColorCode(id=4,  color_code='#65499c'),
+            ColorCode(id=5,  color_code='#49599a'),
+            ColorCode(id=6,  color_code='#2286c3'),
+            ColorCode(id=7,  color_code='#0093c4'),
+            ColorCode(id=8,  color_code='#009faf'),
+            ColorCode(id=9,  color_code='#00867d'),
+            ColorCode(id=10, color_code='#519657'),
+            ColorCode(id=11, color_code='#7da453'),
+            ColorCode(id=12, color_code='#c88719'),
+            ColorCode(id=13, color_code='#c75b39'),
+            ColorCode(id=14, color_code='#725b53'),
+            ColorCode(id=15, color_code='#aeaeae'),
+            ColorCode(id=16, color_code='#62757f'),
+        ]
         
+        cls.color_code = ColorCode.objects.bulk_create(cls.color_code)
+    
+    client = Client()
+      
+    @patch('reviews.views.requests.get', return_value=MockMovieResponse)
+    def test_review_get_success(self, mocked_requests):
         mocked_requests.get = MagicMock()
         
         response = self.client.get("/review/movie/550", **self.header)
         
-        result = response
-        
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(result.json(), {
+        self.assertEqual(response.json(), {
             'message': 'SUCCESS', 
             'result' : {
                 'review_id'    : 1,
@@ -167,4 +188,24 @@ class ReviewTest(TestCase):
                     }
                 }
             }
-        )        
+        )
+
+    @patch('core.storages.MyS3Client.upload', return_value=MockS3UploadImageUrl)
+    def test_review_post_success(self, mocked_response):
+        data = {
+            'user'          : self.user,
+            'movie_id'      : 551,
+            'title'         : 'title',
+            'content'       : 'content',
+            'rating'        : 4.3,
+            'watched_date'  : '2022-10-26 19:43:14',
+            'with_user'     : 'with_user',
+            'review_images' : ['file1', 'file2'],
+            'place_info'    : [124.03, 123.23, 'place_name', 'link'],
+            'tags'          : ['aaaa', 'bbbb', 'cccc']
+        }
+        
+        response = self.client.post('/review', data=data, **self.header)
+        
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message': 'SUCCESS'})
