@@ -63,7 +63,7 @@ class MovieDetailView(APIView):
             'description'         : movie_data.get('overview'),
             'running_time'        : movie_data.get('runtime'),
             'age'                 : movie_data.get('adult'),
-            'ratings'             : movie_data.get('vote_average'),
+            'ratings'             : round(float(movie_data.get('vote_average'))/2,0),
             'release_date'        : movie_data.get('release_date'),
             'country'             : movie_data.get('production_countries')[0].get('name') if movie_data.get('production_countries') != (None or []) else '',
             'category'            : '미구현 제공여부 확인중',

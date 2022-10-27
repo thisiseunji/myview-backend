@@ -8,6 +8,7 @@ csv
 query_debugger.py
 mg.py
 myview.sql
+reference.py
 
 ### Linux ###
 *~

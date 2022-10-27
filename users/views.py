@@ -1,5 +1,4 @@
-import random
-import requests, jwt, datetime
+import requests, jwt, datetime, random
 
 from django.shortcuts        import redirect
 from django.views            import View
@@ -24,7 +23,6 @@ class KakaoLogIn(APIView):
         kakao_auth_api = 'https://kauth.kakao.com/oauth/authorize?response_type=code'
         
         return redirect(f'{kakao_auth_api}&client_id={app_key}&redirect_uri={redirect_uri}')
-
 
 class KakaoLogInCallbackView(APIView):
     def get(self, request):
@@ -143,14 +141,14 @@ class LoginNaverCallBackView(View):
         }
         
         token_response = requests.post(token_api_uri, data=data)
-        
+
         token_info    = token_response.json()
         access_token  = token_info['access_token']
         refresh_token = token_info['refresh_token']
         token_type    = token_info['token_type']
         expires_in    = token_info['expires_in']
-    
-        user_info = requests.post('https://openapi.naver.com/v1/nid/me', headers={'Authorization':'Bearer '+ access_token}, timeout=5).json()
+
+        user_info = requests.get('https://openapi.naver.com/v1/nid/me', headers={'Authorization':'Bearer '+ access_token}, timeout=5).json()
 
         if(user_info['message']!= 'success'):
             return JsonResponse({'message' : user_info['message'], 'ressultcode': user_info['resultcode']}, status=400)
