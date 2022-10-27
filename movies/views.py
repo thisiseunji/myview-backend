@@ -19,7 +19,7 @@ class MovieDetailView(APIView):
     def get(self, request):
         movie_id = request.GET.get('movie_id')
         page     = int(request.GET.get('page', 0))
-        limit    = int(request.GET.get('limit', 8))
+        limit    = int(request.GET.get('limit', 10))
         offset   = page*limit
         
         total_page = -1
