@@ -1,8 +1,8 @@
 import jwt
 
-from unittest.mock import MagicMock, patch
-from django.test   import TestCase, Client
-from reviews.models import ColorCode, Review
+from rest_framework.test import APITestCase, APIClient
+from unittest.mock       import MagicMock, patch
+from reviews.models      import ColorCode, Review
 
 from users.models import SocialPlatform, User, Group
 from my_settings  import SECRET_KEY, ALGORITHM
@@ -99,7 +99,7 @@ class MockMovieResponse:
 class MockS3UploadImageUrl:
     text = 'https://mblogthumb-phinf.pstatic.net/MjAxOTEwMTFfNjEg/MDAxNTcwNzg1ODM3Nzc0.zxDXm20VlPdQv8GQi9LWOdPwkqoBdiEmf8aBTWTsPF8g.FqMQTiF6ufydkQxrLBgET3kNYAyyKGJTWTyi1qd1-_Ag.PNG.kkson50/sample_images_01.png?type=w800'
 
-class ReviewTest(TestCase):
+class ReviewTest(APITestCase):
     mixDiff = None
     
     @classmethod
@@ -125,6 +125,7 @@ class ReviewTest(TestCase):
         )
         
         Review.objects.create(
+            id = 1,
             title = 'testReview',
             content = 'testReviewContents',
             rating  = 5.0,
@@ -159,7 +160,7 @@ class ReviewTest(TestCase):
         
         cls.color_code = ColorCode.objects.bulk_create(cls.color_code)
     
-    client = Client()
+    client = APIClient()
       
     @patch('reviews.views.requests.get', return_value=MockMovieResponse)
     def test_review_get_success(self, mocked_requests):
@@ -206,6 +207,19 @@ class ReviewTest(TestCase):
         }
         
         response = self.client.post('/review', data=data, **self.header)
+        
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message': 'SUCCESS'})
+    
+    @patch('core.storages.MyS3Client.upload', return_value=MockS3UploadImageUrl)
+    def test_review_put_success(self, mocked_response):
+        data = {
+            'review_id' : 1,
+            'title'     : '수정된 타이틀',
+            'rating'    : 1.0
+        }
+        
+        response = self.client.put('/review', data=data, **self.header)
         
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {'message': 'SUCCESS'})
