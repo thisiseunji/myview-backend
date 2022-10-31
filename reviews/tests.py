@@ -2,10 +2,10 @@ import jwt
 
 from rest_framework.test import APITestCase, APIClient
 from unittest.mock       import MagicMock, patch
-from reviews.models      import ColorCode, Review
 
-from users.models import SocialPlatform, User, Group
-from my_settings  import SECRET_KEY, ALGORITHM
+from reviews.models import ColorCode, Review, Tag, ReviewTag, ReviewImage
+from users.models   import SocialPlatform, User, Group  
+from my_settings    import SECRET_KEY, ALGORITHM
 
 class MockMovieResponse:
     def json():
@@ -100,8 +100,8 @@ class MockS3UploadImageUrl:
     text = 'https://mblogthumb-phinf.pstatic.net/MjAxOTEwMTFfNjEg/MDAxNTcwNzg1ODM3Nzc0.zxDXm20VlPdQv8GQi9LWOdPwkqoBdiEmf8aBTWTsPF8g.FqMQTiF6ufydkQxrLBgET3kNYAyyKGJTWTyi1qd1-_Ag.PNG.kkson50/sample_images_01.png?type=w800'
 
 class ReviewTest(APITestCase):
-    mixDiff = None
-    
+    maxDiff = None
+        
     @classmethod
     def setUpTestData(cls):
         group = Group.objects.create(
@@ -124,6 +124,10 @@ class ReviewTest(APITestCase):
             is_valid  = True
         )
         
+        cls.token  = jwt.encode({'id':User.objects.get(id=1).id}, SECRET_KEY, algorithm=ALGORITHM)
+        cls.header = {'HTTP_Authorization': cls.token}
+        cls.payload = jwt.decode(cls.token, SECRET_KEY, algorithms=ALGORITHM)
+        
         Review.objects.create(
             id = 1,
             title = 'testReview',
@@ -134,10 +138,6 @@ class ReviewTest(APITestCase):
             user = cls.user,
             movie_id = 550
         )
-        
-        cls.token  = jwt.encode({'id':User.objects.get(id=1).id}, SECRET_KEY, algorithm=ALGORITHM)
-        cls.header = {'HTTP_Authorization': cls.token}
-        cls.payload = jwt.decode(cls.token, SECRET_KEY, algorithms=ALGORITHM)
 
         cls.color_code = [
             ColorCode(id=1,  color_code='#af4448'),
@@ -158,38 +158,58 @@ class ReviewTest(APITestCase):
             ColorCode(id=16, color_code='#62757f'),
         ]
         
-        cls.color_code = ColorCode.objects.bulk_create(cls.color_code)
-    
+        ColorCode.objects.bulk_create(cls.color_code)
+
+        cls.tag = [
+            Tag(id=1, name='tag1', color_code_id=1),
+            Tag(id=2, name='tag2', color_code_id=2)
+        ]
+
+        Tag.objects.bulk_create(cls.tag)
+        
+        cls.review_tag = [
+            ReviewTag(review_id=1, tag_id=1),
+            ReviewTag(review_id=1, tag_id=2)
+        ]
+        
+        ReviewTag.objects.bulk_create(cls.review_tag)
+
     client = APIClient()
       
     @patch('reviews.views.requests.get', return_value=MockMovieResponse)
     def test_review_get_success(self, mocked_requests):
         mocked_requests.get = MagicMock()
         
-        response = self.client.get("/review/movie/550", **self.header)
+        response = self.client.get("/review/movie/550", **self.header,)
         
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            'message': 'SUCCESS', 
-            'result' : {
-                'review_id'    : 1,
-                'title'        : 'testReview',
-                'content'      : 'testReviewContents',
-                'rating'       : '5.0',
-                'with_user'    : '',
-                'watched_date' : '2022-10-26 19:43:14',
-                'review_images': [],
-                'place'        : [],
-                'tags'         : [],
-                'movie'        : {
-                    'id'      : 550,
-                    'title'   : 'Fight Club',
-                    'country' : 'United States of America',
-                    'category': 'movie'
+        self.assertEqual(response.json(), 
+            {
+                'message': 'SUCCESS',
+                'result': 
+                    {
+                        'review_id': 1,
+                        'title': 'testReview',
+                        'content': 'testReviewContents',
+                        'rating': '5.0',
+                        'with_user': '',
+                        'watched_date': '2022-10-26 19:43:14',
+                        'review_images': [],
+                        'place': [],
+                        'tags': [
+                            {'tag': 'tag1', 'color': '#af4448'},
+                            {'tag': 'tag2', 'color': '#ba2d65'}
+                            ], 
+                        'movie': {
+                            'id': 550,
+                            'title': 'Fight Club',
+                            'country': 'United States of America',
+                            'category': 'movie'
+                            }
+                        }
                     }
-                }
-            }
         )
+        
 
     @patch('core.storages.MyS3Client.upload', return_value=MockS3UploadImageUrl)
     def test_review_post_success(self, mocked_response):
@@ -223,3 +243,9 @@ class ReviewTest(APITestCase):
         
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {'message': 'SUCCESS'})
+    
+    def test_review_delete_success(self):
+        
+        response = self.client.delete('/review/1', **self.header)
+        
+        self.assertEqual(response.status_code, 204)
