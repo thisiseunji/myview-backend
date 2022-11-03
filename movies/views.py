@@ -79,7 +79,7 @@ class MovieDetailView(APIView):
                 'image'     : TMDB_IMAGE_BASE_URL+actor.get('profile_path') if actor.get('profile_path') != None else 'basic_img',
                 'role'      : actor.get('known_for_department'),
                 'role_name' : actor.get('character'),
-                } for actor in actor_data.get('cast')][offset:offset+limit] if actor_data.get('cast') != None else '',  
+                } for actor in actor_data.get('cast')][:20] if actor_data.get('cast') != None else '',  
             'thumbnail_image_url' : TMDB_IMAGE_BASE_URL+movie_data.get('poster_path') if movie_data.get('poster_path') != None else '',
             'image_url'           : [TMDB_IMAGE_BASE_URL+image.get('file_path') for image in image_data.get('backdrops')][:20] if image_data.get('backdrops') != None else '',
             'video_url'           : [TMDB_VIDEO_BASE_URL+video.get('key') for video in video_data.get('results')][:4] if video_data.get('results') != None else '',
