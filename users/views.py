@@ -162,7 +162,7 @@ class LoginNaverCallBackView(View):
             user = User.objects.create(
                 social_id       = user_info['response']['id'],
                 nickname        = user_info['response']['name'],
-                email           = user_info['response']['email'],
+                email           = user_info['response'].get('email', None),
                 group           = Group.objects.get(id=2),
                 social_platform = SocialPlatform.objects.get(id=3)
             )
