@@ -19,7 +19,7 @@ from my_settings      import AWS_S3_URL, SECRET_KEY, ALGORITHM, KAKAO_REST_API_K
 class KakaoLogIn(APIView):
     def get(self, request):
         app_key        = KAKAO_REST_API_KEY
-        redirect_uri   = 'http://localhost:8000/users/login/kakao/callback'
+        redirect_uri   = 'http://localhost:8000/user/login/kakao/callback'
         kakao_auth_api = 'https://kauth.kakao.com/oauth/authorize?response_type=code'
         
         return redirect(f'{kakao_auth_api}&client_id={app_key}&redirect_uri={redirect_uri}')
@@ -67,11 +67,6 @@ class KakaoLogInCallbackView(APIView):
                     }
                 )
             
-            social_id = SocialPlatform.objects.get(id=2).id
-            if len(User.objects.filter(email=email, social_id=2))>1:
-                return Response({'message': 'ERROR'}, status=400)
-            
-            
             #* 기존 가입한 유저가 로그인 할 때
             if User.objects.filter(social_id=social_id).exists():
                 user          = User.objects.get(social_id=social_id)
@@ -95,7 +90,6 @@ class KakaoLogInCallbackView(APIView):
                     social_id       = social_id,
                     nickname        = nickname,
                     social_platform = SocialPlatform.objects.get(name='kakao'),
-                    email           = email,
                     group_id        = Group.objects.get(id=2).id,
                 )
                 
