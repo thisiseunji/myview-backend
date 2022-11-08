@@ -10,7 +10,7 @@ RUN pip install -r requirements.txt
 COPY . .                                 
 
 ## Run the application on the port 8080 
-EXPOSE 8000                              
+EXPOSE 8080                              
 
 #CMD ["python", "./setup.py", "runserver", "--host=0.0.0.0", "-p 8080"] 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "myview.wsgi:application"]
