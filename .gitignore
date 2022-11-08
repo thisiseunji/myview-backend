@@ -7,7 +7,7 @@ db_uploader.py
 csv
 query_debugger.py
 mg.py
-myview.sql
+myviewdump.sql
 reference.py
 
 ### Linux ###
