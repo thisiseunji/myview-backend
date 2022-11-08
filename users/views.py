@@ -54,8 +54,6 @@ class KakaoLogInCallbackView(APIView):
             social_id         = kakao_response['id']
             nickname          = kakao_response['kakao_account']['profile']['nickname']
             profile_image_url = kakao_response['kakao_account']['profile']['profile_image_url']
-            email             = kakao_response['kakao_account']['email']
-            #! 카카로그인 안될시 이메일 동의여부 체크
             
             SocialToken.objects.update_or_create(
                     refresh_token = social_refresh_token,
