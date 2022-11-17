@@ -10,7 +10,9 @@ RUN pip install -r requirements.txt
 COPY . .                                 
 
 ## Run the application on the port 8000 
-EXPOSE 8000                              
+EXPOSE 8000
 
-CMD ["python", "./manage.py", "runserver", "--host=0.0.0.0", "-p 8000"] 
+CMD ["python", "./manage.py", "runserver", "--host=0.0.0.0", "-p 8000"]
 #CMD ["gunicorn", "--bind", "0.0.0.0:8000", "myview.wsgi:application"]
+
+ENTRYPOINT ["python", "./manage.py", "migrate"]
