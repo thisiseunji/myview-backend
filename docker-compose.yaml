@@ -1,38 +1,39 @@
 version: '3.9'
 services:
+  #DB MySQL
   db:
-    image: mysql:latest
+    image: mysql:8.0
     container_name: db
-
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-authentication-plugin=mysql_native_password
-
-    volumes:
-      - $(pwd)/docker/data:/var/lib/mysql
-
+    # command:
+    #   - --default-authentication-plugin=mysql_native_password
+    #   - --character-set-server=utf8mb4
+    #   - --collation-server=utf8mb4_unicode_ci
+    restart: always 
     environment:
-      - MYSQL_ROOT_PASSWORD=blueponny
-      - MYSQL_DATABASE=myview
-    
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      # 호스트 디렉토리 경로 : 컨테이너 내부 디렉토리 경로
+      - ./mysql/data:/var/lib/mysql
+      # OS볼륨의 타임존을 따라가게 할 때 사용하는 옵션
+      - /ect/timezone:/ect/timezone:ro
+      # 설정값 연결
+      - ./mysql/conf.d:/etc/mysql/conf.d
+      # sql파일을 통해 initial data를 생성할 때 사용
+      - ./mysql/initdb.d:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
-
+ 
   web:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-
+    context: ./python
+    build: ./Dockerfile
     container_name: myview
-
     command: >-
+      python manage.py runserver \
       gunicorn --bind 0:8000 myview.wsgi:application
-
     ports:
       - 8000:8000
-
     restart: always
-
     depends_on:
       - db
