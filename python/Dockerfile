@@ -17,4 +17,4 @@ EXPOSE 8000
 VOLUME . .
 
 ## run command
-CMD ["python", "./manage.py", "runserver", "--host=0.0.0.0", "-p 8000"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "myview.wsgi:application"]
